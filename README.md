@@ -174,8 +174,16 @@ Reads `<id>.json` (transcript) and `<id>.diarization.json` (turns), writes:
 
 Known limitation: Whisper's per-word timestamps come from cross-attention
 DTW and tend to be loose around speaker turn boundaries (a trailing word
-can leak into the next speaker's segment). A future step will tighten
-these with wav2vec2 forced alignment.
+can leak into the next speaker's segment).
+
+> **TODO — wav2vec2 forced alignment**: replace Whisper's DTW word
+> timestamps with phoneme-level forced alignment against the audio
+> (the technique whisperx uses internally). Each word's start/end gets
+> snapped to the actual acoustic boundary, eliminating the
+> trailing-word-leaks-into-next-speaker artifact we see at turn changes.
+> Models to consider: `facebook/wav2vec2-base-960h` (English) or a
+> Hindi/multilingual variant for code-switched audio. Adds an `align.py`
+> step between `transcribe.py` and `merge.py`.
 
 ## Playing a downloaded clip
 
