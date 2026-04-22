@@ -108,6 +108,25 @@ Writes:
 - `downloads/<id>.rttm` — standard diarization format for evaluation
 - `downloads/<id>.16k.wav` — 16 kHz mono cache (pyannote-friendly)
 
+## Step 4 — Merge transcript with diarization
+
+Assigns each Whisper word to a speaker (max interval overlap against
+pyannote's `exclusive_diarization`, snap to nearest turn for words in
+silence gaps), then groups consecutive same-speaker words into utterances.
+
+```bash
+uv run python merge.py downloads/<id>.m4a
+```
+
+Reads `<id>.json` (transcript) and `<id>.diarization.json` (turns), writes:
+- `downloads/<id>.diarized.txt` — `[mm:ss - mm:ss] SPEAKER_xx: text`
+- `downloads/<id>.diarized.json` — same data with full word lists
+
+Known limitation: Whisper's per-word timestamps come from cross-attention
+DTW and tend to be loose around speaker turn boundaries (a trailing word
+can leak into the next speaker's segment). A future step will tighten
+these with wav2vec2 forced alignment.
+
 ## Playing a downloaded clip
 
 ```bash
