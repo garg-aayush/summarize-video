@@ -1,193 +1,107 @@
 # podcasts-transcribe
 
-Local pipeline for downloading podcast audio and producing transcripts with
-speaker diarization. Runs on a Mac.
+Local Mac pipeline that turns a podcast URL into a speaker-attributed
+transcript. Uses `yt-dlp` for audio, `mlx-whisper` for transcription, and
+`pyannote.audio` for diarization — all running on-device.
+
+## Pipeline
+
+```
+                  ┌─► transcribe ─► dedupe ─┐
+URL ─► download ──┤   (mlx-whisper)  (loops) ├─► merge ─► <id>.diarized.txt
+   (yt-dlp)       │                          │
+                  └─► diarize ───────────────┘
+                       (pyannote)
+```
+
+Final output: `[mm:ss - mm:ss] SPEAKER_xx: utterance` lines.
 
 ## Setup
 
-Requires `uv` and `ffmpeg` (for audio extraction).
+Requires `uv`, `ffmpeg`, and an `HF_TOKEN` for pyannote.
 
 ```bash
-brew install ffmpeg   # if not already installed
+brew install ffmpeg
 uv sync
+
+export HF_TOKEN=hf_xxx...
+# accept the gates on each pyannote model page (one-time):
+#   https://huggingface.co/pyannote/speaker-diarization-3.1
+#   https://huggingface.co/pyannote/segmentation-3.0
+#   https://huggingface.co/pyannote/speaker-diarization-community-1
 ```
 
-## Step 1 — Download audio
-
-Pulls the best-available audio from a URL via `yt-dlp` and writes an `.m4a`
-into `downloads/`.
+## Run
 
 ```bash
-uv run python main.py "<URL>"
-```
+# English podcast
+uv run python transcribe_podcast.py "<URL>"
 
-### Reference test clip
-
-Use this short YouTube clip for end-to-end testing of the pipeline:
-
-```
-https://www.youtube.com/watch?v=HeAGWTgi4sU
-```
-
-Example:
-
-```bash
-uv run python main.py "https://www.youtube.com/watch?v=HeAGWTgi4sU"
-# -> downloads/HeAGWTgi4sU.m4a (~8 min, stereo AAC ~129 kbps)
-```
-
-### YouTube extractor notes
-
-YouTube has been pushing hard against `yt-dlp`. Two recent failure modes we
-hit and the workaround we settled on:
-
-- `ios` / `web` / `mweb` clients now require a GVS PO Token and skip all
-  formats without one.
-- `tv` client is currently flagged with a session-level DRM experiment
-  (yt-dlp issue #12563) that marks all formats as DRM-protected.
-
-We use `web_embedded` + `android_vr` clients, which still serve plain m4a
-audio formats without PO tokens and are not affected by the DRM experiment.
-If those break in the future, probe available clients with:
-
-```bash
-uv run yt-dlp --extractor-args "youtube:player_client=tv_simply,web_embedded,android_vr" -F "<URL>"
-```
-
-## Step 2 — Transcribe (mlx-whisper)
-
-Runs Whisper locally via Apple MLX. Two presets:
-
-| preset | model | size | when |
-|---|---|---|---|
-| `turbo` (default) | `mlx-community/whisper-large-v3-turbo` (fp16) | ~1.6 GB | English, fast |
-| `v3` | `mlx-community/whisper-large-v3-mlx-8bit` | ~1.6 GB | multilingual / accented / noisy |
-
-Turbo is the distilled 4-decoder large-v3-turbo and is English-tuned — its
-multilingual quality is markedly worse than `v3`. Use `v3` for non-English
-or code-switched audio (we observed turbo mis-detecting our Hindi-English
-test clip as English; v3 detected Hindi).
-
-```bash
-uv run python transcribe.py downloads/<id>.m4a              # turbo
-uv run python transcribe.py downloads/<id>.m4a -m v3        # full v3
-uv run python transcribe.py downloads/<id>.m4a -l en        # force language
-```
-
-Writes:
-- `downloads/<id>.txt` — plain text
-- `downloads/<id>.json` — full result with segments and per-word timestamps
-
-Per-word timestamps come from Whisper's cross-attention DTW
-(`word_timestamps=True`); they're decent but a future step will tighten them
-with wav2vec2 forced alignment.
-
-### Code-switched audio (Hindi + English)
-
-For Hindi-English podcasts, force `v3` and `language=hi`. Whisper renders
-Hindi in Devanagari and naturally drops English words in Latin script,
-which is the MacWhisper-style "Hinglish" output.
-
-```bash
-uv run python transcribe.py downloads/<id>.m4a -m v3 -l hi \
+# Hindi-English code-switched (best params we've found)
+uv run python transcribe_podcast.py "<URL>" -m v3 -l hi \
   --compression-ratio-threshold 2.0 \
   --hallucination-silence-threshold 2.0
+
+# Known speaker count helps diarization
+uv run python transcribe_podcast.py "<URL>" --num-speakers 2
 ```
 
-Useful decoder knobs:
+Each step is skipped if its output already exists, so re-runs are cheap and
+crash-resumable. Pass `-f` to force a full re-run.
 
-| flag | what it does |
+### Important params
+
+| flag | when to use |
 |---|---|
-| `--initial-prompt` | Bias the first chunk's vocabulary. **Often hurts more than it helps** — Whisper can over-anchor to the prompt and lock the first chunk into a loop. Skip unless you have specific domain terms to anchor. |
-| `--compression-ratio-threshold` | Default 2.4. Lower (e.g. 2.0) catches repetition loops earlier and triggers temperature-fallback re-decoding sooner. |
-| `--hallucination-silence-threshold` | Suppress text generated during silent stretches longer than N seconds. Helps with long monologues that drift into silence. |
-| `--temperature` | One value (e.g. 0.0) or the full fallback ladder. |
-| `--beam-size` | Currently raises `NotImplementedError` in mlx-whisper 0.4.3 (no beam search). Kept for forward-compat. |
+| `-m v3` | Non-English / accented / code-switched audio. Slower than `turbo` but multilingual quality is much better. |
+| `-l <code>` | Force language (`hi`, `en`, …). Default auto-detects from the first chunk, which can mis-fire on code-switched audio. |
+| `--compression-ratio-threshold 2.0` | Catch repetition loops earlier (default 2.4). Lower = more aggressive temperature-fallback re-decoding. |
+| `--hallucination-silence-threshold 2.0` | Suppress text generated during silences > N seconds. |
+| `--num-speakers N` / `--min-speakers` / `--max-speakers` | Hint the diarizer when you know the count. |
 
-## Step 2.5 — Dedupe Whisper repetition loops
+Reference test clip:
+[`HeAGWTgi4sU`](https://www.youtube.com/watch?v=HeAGWTgi4sU) (~8 min,
+Hindi-English).
 
-Whisper's greedy decoder occasionally falls into "attractors" and emits a
-short n-gram many times in a row (`thank you thank you ...×30`,
-`सबसे सबसे ...×30`). `dedupe.py` collapses these in a transcript JSON.
+## Run individual steps
 
-```bash
-uv run python dedupe.py downloads/<id>.json
-```
-
-Backs the original up to `<id>.raw.json`, overwrites the in-place JSON +
-`.txt` with the cleaned version. Two passes:
-
-1. Within each segment's `words[]` list — catches loops emitted as one chunk.
-2. Across segments (after dropping zero-duration empties left by the
-   silence guard) — catches loops Whisper split into many short segments.
-
-The collapser scores every n-gram length and picks the one with the most
-total coverage (ties → smaller n), so a 1-gram repeated 22 times collapses
-to 1 even when a larger n-gram would also match.
-
-> **TODO — try `faster-whisper`**: mlx-whisper 0.4.3 is greedy-only (no beam
-> search) and even with temperature fallback can stay stuck on attractors
-> for long Hindi monologues. `faster-whisper` (CTranslate2 backend) supports
-> beam search, `no_repeat_ngram_size`, and `suppress_tokens`, all of which
-> would address loops at the source rather than after the fact. Tradeoff:
-> we lose Apple Neural Engine acceleration, though CT2 on Mac is still fast.
-
-## Step 3 — Diarize (pyannote)
-
-Splits the audio into speaker turns using `pyannote/speaker-diarization-3.1`
-(via pyannote.audio 4.x). Speakers are anonymous (`SPEAKER_00`, `SPEAKER_01`,
-…) — names get attached later.
-
-One-time setup: get an HF read token, accept the three model gates:
-
-- https://huggingface.co/pyannote/speaker-diarization-3.1
-- https://huggingface.co/pyannote/segmentation-3.0
-- https://huggingface.co/pyannote/speaker-diarization-community-1
+If you want to re-run just one stage, each module is invocable directly:
 
 ```bash
-export HF_TOKEN=hf_xxx...
-uv run python diarize.py downloads/<id>.m4a
-# optional speaker-count hints:
-#   --num-speakers 2          (exact)
-#   --min-speakers 2 --max-speakers 4
+uv run python -m steps.download   "<URL>"
+uv run python -m steps.transcribe downloads/<id>.m4a -m v3 -l hi
+uv run python -m steps.dedupe     downloads/<id>.json
+uv run python -m steps.diarize    downloads/<id>.m4a
+uv run python -m steps.merge      downloads/<id>.m4a
 ```
 
-Writes:
-- `downloads/<id>.diarization.json` — both `diarization` (may overlap) and
-  `exclusive_diarization` (non-overlapping; use this when merging with words)
-- `downloads/<id>.rttm` — standard diarization format for evaluation
-- `downloads/<id>.16k.wav` — 16 kHz mono cache (pyannote-friendly)
+See [`docs/pipeline.md`](docs/pipeline.md) for what each step does, the
+file formats it reads/writes, and the full flag list.
 
-## Step 4 — Merge transcript with diarization
+## Repo structure
 
-Assigns each Whisper word to a speaker (max interval overlap against
-pyannote's `exclusive_diarization`, snap to nearest turn for words in
-silence gaps), then groups consecutive same-speaker words into utterances.
-
-```bash
-uv run python merge.py downloads/<id>.m4a
+```
+transcribe_podcast.py     # orchestrator: URL -> diarized transcript
+steps/
+  download.py             # 1. yt-dlp -> downloads/<id>.m4a
+  transcribe.py           # 2. mlx-whisper -> .json + .txt
+  dedupe.py               # 3. collapse Whisper repetition loops
+  diarize.py              # 4. pyannote -> .diarization.json + .rttm
+  merge.py                # 5. words × turns -> .diarized.txt
+docs/
+  pipeline.md             # deep-dive on each step + flags
+  definitions.md          # glossary (Whisper, MLX, DTW, diarization, …)
+  experiments.md          # things we tried and what we learned
+downloads/                # all artifacts land here (gitignored)
 ```
 
-Reads `<id>.json` (transcript) and `<id>.diarization.json` (turns), writes:
-- `downloads/<id>.diarized.txt` — `[mm:ss - mm:ss] SPEAKER_xx: text`
-- `downloads/<id>.diarized.json` — same data with full word lists
+## TODO
 
-Known limitation: Whisper's per-word timestamps come from cross-attention
-DTW and tend to be loose around speaker turn boundaries (a trailing word
-can leak into the next speaker's segment).
+- **`faster-whisper` backend** — beam search + `no_repeat_ngram_size` would
+  prevent repetition loops at decode time instead of after the fact.
+- **wav2vec2 forced alignment** — replace Whisper's DTW word timestamps
+  with phoneme-level alignment to fix word-leakage at speaker turn changes.
+- **Speaker name attribution** — map `SPEAKER_00` / `SPEAKER_01` / … to
+  actual names.
 
-> **TODO — wav2vec2 forced alignment**: replace Whisper's DTW word
-> timestamps with phoneme-level forced alignment against the audio
-> (the technique whisperx uses internally). Each word's start/end gets
-> snapped to the actual acoustic boundary, eliminating the
-> trailing-word-leaks-into-next-speaker artifact we see at turn changes.
-> Models to consider: `facebook/wav2vec2-base-960h` (English) or a
-> Hindi/multilingual variant for code-switched audio. Adds an `align.py`
-> step between `transcribe.py` and `merge.py`.
-
-## Playing a downloaded clip
-
-```bash
-open downloads/<id>.m4a       # QuickTime / Music
-ffplay -nodisp -autoexit downloads/<id>.m4a   # terminal playback
-```
+Details for each in [`docs/pipeline.md`](docs/pipeline.md#todos).
