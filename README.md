@@ -54,6 +54,34 @@ If those break in the future, probe available clients with:
 uv run yt-dlp --extractor-args "youtube:player_client=tv_simply,web_embedded,android_vr" -F "<URL>"
 ```
 
+## Step 2 — Transcribe (mlx-whisper)
+
+Runs Whisper locally via Apple MLX. Two presets:
+
+| preset | model | size | when |
+|---|---|---|---|
+| `turbo` (default) | `mlx-community/whisper-large-v3-turbo` (fp16) | ~1.6 GB | English, fast |
+| `v3` | `mlx-community/whisper-large-v3-mlx-8bit` | ~1.6 GB | multilingual / accented / noisy |
+
+Turbo is the distilled 4-decoder large-v3-turbo and is English-tuned — its
+multilingual quality is markedly worse than `v3`. Use `v3` for non-English
+or code-switched audio (we observed turbo mis-detecting our Hindi-English
+test clip as English; v3 detected Hindi).
+
+```bash
+uv run python transcribe.py downloads/<id>.m4a              # turbo
+uv run python transcribe.py downloads/<id>.m4a -m v3        # full v3
+uv run python transcribe.py downloads/<id>.m4a -l en        # force language
+```
+
+Writes:
+- `downloads/<id>.txt` — plain text
+- `downloads/<id>.json` — full result with segments and per-word timestamps
+
+Per-word timestamps come from Whisper's cross-attention DTW
+(`word_timestamps=True`); they're decent but a future step will tighten them
+with wav2vec2 forced alignment.
+
 ## Playing a downloaded clip
 
 ```bash
