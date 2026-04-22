@@ -82,6 +82,32 @@ Per-word timestamps come from Whisper's cross-attention DTW
 (`word_timestamps=True`); they're decent but a future step will tighten them
 with wav2vec2 forced alignment.
 
+## Step 3 — Diarize (pyannote)
+
+Splits the audio into speaker turns using `pyannote/speaker-diarization-3.1`
+(via pyannote.audio 4.x). Speakers are anonymous (`SPEAKER_00`, `SPEAKER_01`,
+…) — names get attached later.
+
+One-time setup: get an HF read token, accept the three model gates:
+
+- https://huggingface.co/pyannote/speaker-diarization-3.1
+- https://huggingface.co/pyannote/segmentation-3.0
+- https://huggingface.co/pyannote/speaker-diarization-community-1
+
+```bash
+export HF_TOKEN=hf_xxx...
+uv run python diarize.py downloads/<id>.m4a
+# optional speaker-count hints:
+#   --num-speakers 2          (exact)
+#   --min-speakers 2 --max-speakers 4
+```
+
+Writes:
+- `downloads/<id>.diarization.json` — both `diarization` (may overlap) and
+  `exclusive_diarization` (non-overlapping; use this when merging with words)
+- `downloads/<id>.rttm` — standard diarization format for evaluation
+- `downloads/<id>.16k.wav` — 16 kHz mono cache (pyannote-friendly)
+
 ## Playing a downloaded clip
 
 ```bash
