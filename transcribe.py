@@ -25,13 +25,32 @@ def transcribe(
     model: str = DEFAULT_PRESET,
     language: str | None = None,
     word_timestamps: bool = True,
+    initial_prompt: str | None = None,
+    beam_size: int | None = None,
+    temperature: tuple[float, ...] | float | None = None,
+    compression_ratio_threshold: float | None = None,
+    hallucination_silence_threshold: float | None = None,
 ) -> dict:
+    kwargs: dict = {}
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    if compression_ratio_threshold is not None:
+        kwargs["compression_ratio_threshold"] = compression_ratio_threshold
+    if hallucination_silence_threshold is not None:
+        kwargs["hallucination_silence_threshold"] = hallucination_silence_threshold
+    if beam_size is not None:
+        # Passed through to the DecodingOptions via **decode_options.
+        # NOTE: mlx-whisper 0.4.3 raises NotImplementedError if beam_size > 1.
+        kwargs["beam_size"] = beam_size
+
     return mlx_whisper.transcribe(
         str(audio_path),
         path_or_hf_repo=resolve_model(model),
         language=language,
         word_timestamps=word_timestamps,
+        initial_prompt=initial_prompt,
         verbose=False,
+        **kwargs,
     )
 
 
@@ -61,14 +80,57 @@ def main() -> None:
         "--no-word-timestamps", action="store_true",
         help="Skip per-word timestamps (faster, segment-only).",
     )
+    parser.add_argument(
+        "-p", "--initial-prompt", default=None,
+        help=(
+            "Text passed to Whisper before decoding the first chunk. "
+            "Use Latin-script English words (e.g., 'LSD Mumbai Reliance School') "
+            "to bias code-switched audio toward MacWhisper-style Hinglish output."
+        ),
+    )
+    parser.add_argument(
+        "--beam-size", type=int, default=None,
+        help="Beam search width. Default greedy (None). Try 5 to escape repetition loops.",
+    )
+    parser.add_argument(
+        "--compression-ratio-threshold", type=float, default=None,
+        help=(
+            "Trip wire for repetition loops. Default 2.4; lower (e.g., 2.0) catches "
+            "loops earlier and triggers temperature-fallback re-decoding sooner."
+        ),
+    )
+    parser.add_argument(
+        "--temperature", type=float, nargs="+", default=None,
+        help=(
+            "Sampling temperature(s). Pass one value (e.g., 0.0) or the full "
+            "fallback ladder (e.g., 0.0 0.2 0.4 0.6 0.8 1.0)."
+        ),
+    )
+    parser.add_argument(
+        "--hallucination-silence-threshold", type=float, default=None,
+        help=(
+            "Skip text generated during silent stretches longer than N seconds. "
+            "Requires word_timestamps. Try 2.0 to suppress silence-driven "
+            "repetition loops in long monologues."
+        ),
+    )
     args = parser.parse_args()
 
     print(f"Transcribing {args.audio} with {args.model} ({resolve_model(args.model)})")
+    temperature = (
+        args.temperature[0] if args.temperature and len(args.temperature) == 1
+        else (tuple(args.temperature) if args.temperature else None)
+    )
     result = transcribe(
         args.audio,
         model=args.model,
         language=args.language,
         word_timestamps=not args.no_word_timestamps,
+        initial_prompt=args.initial_prompt,
+        beam_size=args.beam_size,
+        temperature=temperature,
+        compression_ratio_threshold=args.compression_ratio_threshold,
+        hallucination_silence_threshold=args.hallucination_silence_threshold,
     )
 
     json_path, txt_path = write_outputs(args.audio, result)
