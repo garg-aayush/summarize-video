@@ -82,6 +82,56 @@ Per-word timestamps come from Whisper's cross-attention DTW
 (`word_timestamps=True`); they're decent but a future step will tighten them
 with wav2vec2 forced alignment.
 
+### Code-switched audio (Hindi + English)
+
+For Hindi-English podcasts, force `v3` and `language=hi`. Whisper renders
+Hindi in Devanagari and naturally drops English words in Latin script,
+which is the MacWhisper-style "Hinglish" output.
+
+```bash
+uv run python transcribe.py downloads/<id>.m4a -m v3 -l hi \
+  --compression-ratio-threshold 2.0 \
+  --hallucination-silence-threshold 2.0
+```
+
+Useful decoder knobs:
+
+| flag | what it does |
+|---|---|
+| `--initial-prompt` | Bias the first chunk's vocabulary. **Often hurts more than it helps** — Whisper can over-anchor to the prompt and lock the first chunk into a loop. Skip unless you have specific domain terms to anchor. |
+| `--compression-ratio-threshold` | Default 2.4. Lower (e.g. 2.0) catches repetition loops earlier and triggers temperature-fallback re-decoding sooner. |
+| `--hallucination-silence-threshold` | Suppress text generated during silent stretches longer than N seconds. Helps with long monologues that drift into silence. |
+| `--temperature` | One value (e.g. 0.0) or the full fallback ladder. |
+| `--beam-size` | Currently raises `NotImplementedError` in mlx-whisper 0.4.3 (no beam search). Kept for forward-compat. |
+
+## Step 2.5 — Dedupe Whisper repetition loops
+
+Whisper's greedy decoder occasionally falls into "attractors" and emits a
+short n-gram many times in a row (`thank you thank you ...×30`,
+`सबसे सबसे ...×30`). `dedupe.py` collapses these in a transcript JSON.
+
+```bash
+uv run python dedupe.py downloads/<id>.json
+```
+
+Backs the original up to `<id>.raw.json`, overwrites the in-place JSON +
+`.txt` with the cleaned version. Two passes:
+
+1. Within each segment's `words[]` list — catches loops emitted as one chunk.
+2. Across segments (after dropping zero-duration empties left by the
+   silence guard) — catches loops Whisper split into many short segments.
+
+The collapser scores every n-gram length and picks the one with the most
+total coverage (ties → smaller n), so a 1-gram repeated 22 times collapses
+to 1 even when a larger n-gram would also match.
+
+> **TODO — try `faster-whisper`**: mlx-whisper 0.4.3 is greedy-only (no beam
+> search) and even with temperature fallback can stay stuck on attractors
+> for long Hindi monologues. `faster-whisper` (CTranslate2 backend) supports
+> beam search, `no_repeat_ngram_size`, and `suppress_tokens`, all of which
+> would address loops at the source rather than after the fact. Tradeoff:
+> we lose Apple Neural Engine acceleration, though CT2 on Mac is still fast.
+
 ## Step 3 — Diarize (pyannote)
 
 Splits the audio into speaker turns using `pyannote/speaker-diarization-3.1`
