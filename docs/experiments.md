@@ -4,6 +4,41 @@ A running log of decisions and dead-ends. Each entry: what I wanted, what I trie
 
 ---
 
+## Re-running the reasoning A/B with a stricter prompt — narrows the gap, doesn't close it
+
+**Hypothesis.** The earlier A/B (entry below) concluded reasoning-off was a net loss because Gemma stopped honoring the "never paraphrase" rule and translated Hindi quotes to English. That prompt was fairly loose — one paragraph of instructions, no explicit depth rules, no self-check. I rewrote the summarize system prompt into explicit `<input_format>` / `<context_usage>` / `<depth_rules>` / `<output_format>` / `<final_check>` blocks with concrete anti-patterns ("specifics over generics", "argument over topic", "verbatim quotes"). If the stricter prompt is doing real work, reasoning-off should now honor those constraints — and we'd get the ~2x step-6 speed-up for free.
+
+**Speed result on cold cache (`./benchmark.sh all`, RTX 4090, same transcripts both runs):**
+
+| case | step 6 — new prompt + reasoning on | step 6 — new prompt + reasoning off |
+|---|---|---|
+| `en` | 101.9 s | **53.6 s** (−47%) |
+| `hi` |  71.3 s | **38.1 s** (−47%) |
+
+Same ~2x speed-up as last time. Reasoning-off with the new prompt lands within noise of the *old* prompt's reasoning-on baseline (~45 / ~35 s), i.e. the longer prompt costs ~10 s of prefill.
+
+**Quality result. The prompt wins some, loses others.**
+
+What the stricter prompt now holds without reasoning:
+
+- **Hindi quotes stay in Devanagari.** The big regression from the previous A/B is gone — the explicit "Never paraphrase or clean up grammar" rule in `<output_format>` is enough on its own:
+
+  > "Because कोई भी language आपको बोलने से आती है, आपका environment आपको वो language सिखाता है..."
+
+- Section headings, `>` blockquote format, Chapter timestamp format, TL;DR-as-claims — all intact in both variants.
+
+What the prompt doesn't hold:
+
+- **Key Points drifts back to `**Topic:** description` framing.** `<depth_rules>` explicitly says "Argument over topic. Write what was claimed or concluded, not what was discussed" and "Lead with the claim, not the speaker." Reasoning-on produced clean claim-first bullets ("Anthropic's revenue grew exponentially from $100M in 2023 to $10B in 2025…"). Reasoning-off reverted to `**AGI Timelines:** Dario Amodei predicts…` — exactly the anti-pattern the prompt was trying to kill.
+- **Notable-quote token-mixing bug.** Reasoning-off garbled one EN quote with Japanese and Dutch tokens: `"…might be six to 12 months away from anいい mooi when the model…"`. Reasoning-on produced a clean verbatim quote from the same transcript. Deliberation seems to catch these output-generation glitches; greedy decoding doesn't.
+- **HI resources list shrinks.** Reasoning-on: 5 entities (Hansal Mehta, The Ranveer Show, Reliance School, LSD, Hindi/Urdu). Reasoning-off: 2. Same pattern as the previous A/B — reasoning-off drops named entities that require deliberation to surface.
+
+**Decision: reverted (again).** Keep reasoning on for the main summarize call. The stricter prompt narrows the quality gap — Devanagari preservation is now free, the previous A/B's headline regression — but it doesn't close the gap. Reasoning-on still produces more faithful Key Points framing, more complete resource lists, and avoids the occasional token-mixing bug. 30–50 s saved per run isn't worth it.
+
+**Lesson.** Prompt rigor and deliberation do different work. A stricter prompt closes some rule-adherence gaps (verbatim quotes, language preservation) but not others (argument-vs-topic framing, named-entity coverage, output-token coherence). Reasoning appears to be doing mechanism-level work at generation time — picking the right token for the verbatim-quote span, deciding which entity deserves a resource bullet — that prose instructions can't replicate. The main-summary-call reasoning cost is a tax on faithfulness, not on "smartness."
+
+---
+
 ## Disabling reasoning on the main summary call — fast, but paraphrases Hindi quotes
 
 **Hypothesis.** Disabling Gemma's hidden reasoning on the *extraction* call cut its eval from 25 s to 1.3 s without hurting output quality. The same `chat_template_kwargs.enable_thinking=false` flag should give a similar speed-up on the main summary call (which currently emits ~750–1500 hidden thinking tokens per run). If quality holds, we get a half-cost step 6.

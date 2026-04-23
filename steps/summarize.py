@@ -472,10 +472,7 @@ def summarize(
             "Start it manually (see docs/summarize.md), or pass auto_start=True."
         )
     user_message = _build_user_message(text, context)
-    raw = _chat(
-        server_url, SYSTEM_PROMPT, user_message, temperature, max_tokens, timeout,
-        chat_template_kwargs={"enable_thinking": False},
-    )
+    raw = _chat(server_url, SYSTEM_PROMPT, user_message, temperature, max_tokens, timeout)
     out = output or Path(transcript).with_suffix(".summary.md")
     out.write_text(_clean_output(raw) + "\n")
     return out
