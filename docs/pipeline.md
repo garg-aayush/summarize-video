@@ -1,8 +1,9 @@
 # Pipeline — deep dive
 
 Five steps, each a standalone module under `steps/`. The orchestrator
-`transcribe_podcast.py` chains them and skips any step whose output already
-exists on disk.
+`summarize_video.py` chains them and skips any step whose output already
+exists on disk. Built for YouTube podcast-style discussions — English, or
+Hindi + English code-switched.
 
 ```
                   ┌─► transcribe ─► dedupe ─┐
@@ -75,7 +76,8 @@ boundaries (see [TODO: wav2vec2 forced alignment](#todos)).
 
 ### Code-switched audio (Hindi + English)
 
-For Hindi-English podcasts, force `v3` and `language=hi`. Whisper renders
+For Hindi-English code-switched discussions, force `v3` and
+`language=hi`. Whisper renders
 Hindi in Devanagari and naturally drops English words in Latin script,
 which is the MacWhisper-style "Hinglish" output.
 

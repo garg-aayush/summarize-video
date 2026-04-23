@@ -1,14 +1,16 @@
-# Claude instructions for podcasts-transcribe
+# Claude instructions for summarize-video
 
 ## Project
 
-Local Mac pipeline: podcast/YouTube URL → speaker-attributed transcript (+
-optional local-LLM summary). Components: `yt-dlp`, `mlx-whisper`,
-`pyannote.audio`, and `llama.cpp` (Gemma 4 31B) — all on-device.
+Local pipeline to summarize YouTube videos with a focus on podcast-style
+discussions (English, or Hindi + English code-switched): URL →
+speaker-attributed transcript (+ optional local-LLM summary). Components:
+`yt-dlp`, `mlx-whisper`, `pyannote.audio`, and `llama.cpp` (Gemma 4 31B) —
+all on-device.
 
 ## Layout
 
-- `transcribe_podcast.py` — orchestrator entry (download → transcribe → dedupe → diarize → merge).
+- `summarize_video.py` — orchestrator entry (download → transcribe → dedupe → diarize → merge).
 - `steps/` — one module per step, each runnable as `python -m steps.<name>`. Includes the optional `steps/summarize.py`.
 - `docs/` — `pipeline.md` (per-step deep-dive), `definitions.md` (glossary), `experiments.md` (decisions log), `summarize.md` (llama.cpp setup).
 
@@ -19,14 +21,15 @@ the system Python or pip.
 
 Orchestrator examples:
 
-    uv run python transcribe_podcast.py "<URL>" -l en
-    uv run python transcribe_podcast.py "<URL>" -m v3 -l hi \
+    uv run python summarize_video.py "<URL>" -l en
+    uv run python summarize_video.py "<URL>" -m v3 -l hi \
       --compression-ratio-threshold 2.0 --hallucination-silence-threshold 2.0
-    uv run python transcribe_podcast.py "<URL>" --no-diarize
+    uv run python summarize_video.py "<URL>" --no-diarize
 
-Intermediates land in `/tmp/podcasts-<id>/` (cache-friendly across re-runs);
-finals are copied to `--output-dir` (default: CWD). **Don't reintroduce
-`downloads/`** as the orchestrator sink — that change was deliberate.
+Intermediates land in `/tmp/summarize-video-<id>/` (cache-friendly across
+re-runs); finals are copied to `--output-dir` (default: CWD). **Don't
+reintroduce `downloads/`** as the orchestrator sink — that change was
+deliberate.
 
 The summarize step needs `llama-server` running. The script can spawn it:
 

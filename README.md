@@ -1,8 +1,10 @@
-# podcasts-transcribe
+# summarize-video
 
-Local Mac pipeline that turns a podcast URL into a speaker-attributed
-transcript. Uses `yt-dlp` for audio, `mlx-whisper` for transcription, and
-`pyannote.audio` for diarization — all running on-device.
+Local pipeline that turns a YouTube URL into a speaker-attributed transcript
+and (optionally) a structured summary. Built for podcast-style
+discussions — English, or Hindi + English code-switched. Uses `yt-dlp` for
+audio, `mlx-whisper` for transcription, and `pyannote.audio` for
+diarization — all running on-device.
 
 ## Pipeline
 
@@ -36,28 +38,28 @@ export HF_TOKEN=hf_xxx...
 ```bash
 # English podcast — defaults are tuned for this; just force the language
 # so Whisper doesn't waste a chunk auto-detecting.
-uv run python transcribe_podcast.py "<URL>" -l en
+uv run python summarize_video.py "<URL>" -l en
 
 # Hindi-English code-switched (best params we've found)
-uv run python transcribe_podcast.py "<URL>" -m v3 -l hi \
+uv run python summarize_video.py "<URL>" -m v3 -l hi \
   --compression-ratio-threshold 2.0 \
   --hallucination-silence-threshold 2.0
 
 # Known speaker count helps diarization (works with any language)
-uv run python transcribe_podcast.py "<URL>" -l en --num-speakers 2
+uv run python summarize_video.py "<URL>" -l en --num-speakers 2
 
 # Skip diarization entirely (faster; plain + timed transcript only)
-uv run python transcribe_podcast.py "<URL>" -l en --no-diarize
+uv run python summarize_video.py "<URL>" -l en --no-diarize
 
 # Drop final transcripts in a specific folder
-uv run python transcribe_podcast.py "<URL>" -l en -o ~/Documents/transcripts/
+uv run python summarize_video.py "<URL>" -l en -o ~/Documents/transcripts/
 ```
 
 ### Where outputs go
 
 Intermediate files (audio, raw JSON, diarization, etc.) land in a per-URL
-system temp dir (`/tmp/podcasts-<id>/`). Re-running the same URL skips any
-step whose output is already in there, so re-runs are cheap and
+system temp dir (`/tmp/summarize-video-<id>/`). Re-running the same URL
+skips any step whose output is already in there, so re-runs are cheap and
 crash-resumable. Pass `-f` to force a full re-run.
 
 The **final transcripts** are copied into `--output-dir` (default: current
@@ -139,7 +141,7 @@ takeaways, Important quotes, Resources. Full setup in
 ## Repo structure
 
 ```
-transcribe_podcast.py     # orchestrator: URL -> diarized transcript
+summarize_video.py        # orchestrator: URL -> diarized transcript
 steps/
   download.py             # 1. yt-dlp -> downloads/<id>.m4a
   transcribe.py           # 2. mlx-whisper -> .json + .txt
@@ -153,7 +155,7 @@ docs/
   experiments.md          # things we tried and what we learned
   summarize.md            # llama.cpp + Gemma 4 31B setup for steps/summarize.py
 downloads/                # default sink for `python -m steps.*` (gitignored).
-                          # The orchestrator uses /tmp/podcasts-<id>/ instead.
+                          # The orchestrator uses /tmp/summarize-video-<id>/ instead.
 ```
 
 ## TODO

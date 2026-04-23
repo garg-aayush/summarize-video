@@ -1,7 +1,7 @@
 [project]
-name = "podcasts-transcribe"
+name = "summarize-video"
 version = "0.1.0"
-description = "Add your description here"
+description = "Local pipeline to summarize YouTube videos (podcast-style discussions in English or Hindi+English) with speaker-attributed transcripts."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

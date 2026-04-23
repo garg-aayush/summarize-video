@@ -16,6 +16,7 @@ wheels/
 downloads/
 
 # Pipeline output artifacts at repo root (orchestrator default --output-dir)
+/*.txt
 /*.timed.*
 /*.diarized.*
 /*.summary.*

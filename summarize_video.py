@@ -1,6 +1,7 @@
-"""End-to-end pipeline: URL -> diarized transcript.
+"""End-to-end pipeline: YouTube URL -> diarized transcript (+ optional summary).
 
-Runs five steps in order:
+Tuned for podcast-style videos (English or Hindi+English code-switched
+discussions). Runs five steps in order:
   1. download   (steps.download.download_audio)
   2. transcribe (steps.transcribe.transcribe)
   3. dedupe     (steps.dedupe.dedupe_transcript)
@@ -8,9 +9,9 @@ Runs five steps in order:
   5. merge      (steps.merge.merge)             [skipped with --no-diarize]
 
 Intermediate files land in a per-URL system temp dir
-(`/tmp/podcasts-<id>/...`), so re-running the same URL skips already-done
-steps. Final transcripts are copied into the output directory (default:
-current working directory).
+(`/tmp/summarize-video-<id>/...`), so re-running the same URL skips
+already-done steps. Final transcripts are copied into the output directory
+(default: current working directory).
 
 Always-produced final outputs:
   <id>.txt         plain deduped text
@@ -82,7 +83,7 @@ def run(
 ) -> None:
     print(f"Resolving {url}")
     video_id = _resolve_video_id(url)
-    work_dir = Path(tempfile.gettempdir()) / f"podcasts-{video_id}"
+    work_dir = Path(tempfile.gettempdir()) / f"summarize-video-{video_id}"
     work_dir.mkdir(parents=True, exist_ok=True)
     print(f"Work dir: {work_dir}")
 

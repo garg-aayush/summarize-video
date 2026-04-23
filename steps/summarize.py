@@ -23,8 +23,8 @@ from pathlib import Path
 
 DEFAULT_SERVER = "http://127.0.0.1:8081"
 DEFAULT_MODEL = Path.home() / "models/gemma-4-31b/gemma-4-31B-it-UD-Q4_K_XL.gguf"
-PID_FILE = Path("/tmp/podcasts-llama-server.pid")
-LOG_FILE = Path("/tmp/podcasts-llama-server.log")
+PID_FILE = Path("/tmp/summarize-video-llama-server.pid")
+LOG_FILE = Path("/tmp/summarize-video-llama-server.log")
 
 SYSTEM_PROMPT = """\
 <role>

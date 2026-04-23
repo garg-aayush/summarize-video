@@ -84,7 +84,7 @@ Flags:
 | flag | what it does |
 |---|---|
 | `-ngl 99` | Offload all layers to Metal (GPU). |
-| `-c 65536` | 64K context — enough for a ~2-hour podcast. Push higher (128K, 256K) if you need it. |
+| `-c 65536` | 64K context — enough for a ~2-hour video. Push higher (128K, 256K) if you need it. |
 | `--flash-attn on` | Flash attention. Required when using a quantized KV cache. |
 | `--cache-type-k q8_0` / `--cache-type-v q8_0` | 8-bit KV cache. Halves its memory, near-lossless quality. |
 | `--parallel 1` | One concurrent slot. We're not multiplexing requests. |
@@ -97,7 +97,7 @@ Flags:
 
 ### Why these flags help summarization specifically
 
-Summarization is **prefill-bound**: a one-hour podcast can be 30K–60K
+Summarization is **prefill-bound**: a one-hour video can be 30K–60K
 input tokens but the summary is only ~1–2K output tokens, so we spend most
 of the wall-clock time digesting the input before generating anything.
 
@@ -156,8 +156,8 @@ uv run python -m steps.summarize --stop-server
 
 `--auto-start` only spawns a server if one isn't already reachable on
 `--server-url`. If you started the server manually, it's reused as-is.
-The auto-started PID is tracked in `/tmp/podcasts-llama-server.pid` and
-its log streams to `/tmp/podcasts-llama-server.log`.
+The auto-started PID is tracked in `/tmp/summarize-video-llama-server.pid`
+and its log streams to `/tmp/summarize-video-llama-server.log`.
 
 Output lands at `02YLwsCKUww.diarized.summary.md` next to the input. The
 script prefers `.diarized.txt` (speaker-attributed) but works on plain
@@ -191,10 +191,10 @@ already specifies. Sampling is tuned for faithful extraction:
 | `min_p` | 0.05 | Trims tail noise that slips past top-p at low temperatures. |
 | `repeat_penalty` | 1.0 (off) | Gemma is sensitive to penalties >1.0; the XML scaffold legitimately repeats tags. |
 
-If a particularly dense or technical podcast comes back with shallow
+If a particularly dense or technical video comes back with shallow
 chapters or missed arguments, **then** consider enabling thinking mode (by
-prepending `<|think|>` in a custom system prompt). For everyday podcasts
-the defaults above are sufficient.
+prepending `<|think|>` in a custom system prompt). For everyday podcast
+discussions the defaults above are sufficient.
 
 If parsing the model's `<summary>` XML fails, the raw response is saved
 as `<input>.summary.raw.txt` so you can debug the prompt or inspect
@@ -204,7 +204,7 @@ output yourself.
 
 Six sections (see `steps/summarize.py` for the exact system prompt):
 
-1. **TL;DR** — short summary of the podcast.
+1. **TL;DR** — short summary of the video.
 2. **Key points** — main points raised across the conversation.
 3. **Chapters** — `[mm:ss] Short title`, in order, 5–10 entries.
 4. **Main takeaways** — the load-bearing conclusions a listener should walk away with.
