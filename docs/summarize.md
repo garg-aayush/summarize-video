@@ -174,10 +174,13 @@ Output lands at `02YLwsCKUww.diarized.summary.md` next to the input. The script 
 | `--model PATH` | `~/models/gemma-4-31b/gemma-4-31B-it-UD-Q4_K_XL.gguf` | Model used when `--auto-start` spawns the server. |
 | `--server-cmd CMD` | (built-in recipe) | Full custom command, e.g. `"llama-server -m foo.gguf -ngl 99 ..."`. Overrides `--model`. |
 | `--server-wait-timeout` | `180` | Seconds to wait for the spawned server to become ready. |
+| `--context-file FILE` | none | Pre-extracted Episode Context markdown (see next section). Prepended to the transcript in an `<episode_context>` tag so the model can attribute `SPEAKER_xx` labels and ground named entities. |
+
+The orchestrator (`summarize_video.py`) has a matching `--no-episode-context` flag to skip context extraction entirely for videos whose description is useless.
 
 ### Why these defaults
 
-Summarization is structural extraction, not reasoning, so I **don't enable Gemma 4's thinking mode** — it would burn tokens planning output the prompt already specifies. Sampling is tuned for faithful extraction:
+Sampling is tuned for faithful extraction:
 
 | param | value | why |
 |---|---|---|
@@ -187,9 +190,44 @@ Summarization is structural extraction, not reasoning, so I **don't enable Gemma
 | `min_p` | 0.05 | Trims tail noise that slips past top-p at low temperatures. |
 | `repeat_penalty` | 1.0 (off) | Gemma is sensitive to penalties >1.0; the XML scaffold legitimately repeats tags. |
 
-If a particularly dense or technical video comes back with shallow chapters or missed arguments, **then** consider enabling thinking mode (by prepending `<|think|>` in a custom system prompt). For everyday podcast discussions the defaults above are sufficient.
+Gemma 4's thinking mode is **on** for the main summarize call (the default when `--jinja` renders the chat template) and **off** for the episode-context extraction call. The short version: reasoning is what makes Gemma actually honor the strict prompt constraints (verbatim quotes, language preservation, use of the prepended context block), so I pay the ~30–40 s of hidden `<think>` tokens on the main call; the extraction call has no such constraints, so I turn thinking off to avoid burning its entire `max_tokens` budget on deliberation. See the "Episode context" and "Reasoning caveat" sections below, plus `docs/experiments.md` for the A/B results that settled this.
 
 If parsing the model's `<summary>` XML fails, the raw response is saved as `<input>.summary.raw.txt` so you can debug the prompt or inspect output yourself.
+
+## Episode context
+
+Step 6 makes a small extra llama-server call before the main summary. It passes the YouTube description to Gemma with a separate extraction prompt and asks for a structured block:
+
+    ## Episode Context
+    - **Show:** …
+    - **Title or topic:** …
+    - **Host:** …
+    - **Guests:** …
+    - **Event or venue:** …
+    - **Themes promised:** …
+    - **Language:** …
+
+Any field the description doesn't explicitly state is omitted (no "N/A", no guessing). The result is written to `<id>.episode_context.md` in the work dir and then prepended to the main summary call inside an `<episode_context>` tag. The main prompt tells Gemma to use it for grounding but to defer to the transcript whenever the two conflict.
+
+### Why it exists
+
+Diarization gives you `SPEAKER_00`, `SPEAKER_01`, …  — not names. If the speakers don't introduce each other on mic (common on single-guest podcasts), the summarizer has nothing to anchor labels to and either falls back to generic roles ("host" / "actor") or fabricates names. On one of my Hindi benchmarks the pre-context version confidently invented a show called *"The Andy Show Clips"*; with context it correctly attributes lines to **Ranveer** and **Rajkummar Rao**. Full A/B in `docs/experiments.md` § "Episode context".
+
+### Reasoning caveat (important)
+
+The extraction call runs with reasoning **disabled** via:
+
+```json
+"chat_template_kwargs": {"enable_thinking": false}
+```
+
+`--jinja` makes llama-server forward that into Gemma 4's chat template, which then skips the `<think>` block. Without this, Gemma's hidden reasoning can consume the entire `max_tokens=1024` budget on a structured-output task this small and return an empty string — the first version of this feature shipped broken for exactly that reason, and the server log (`reasoning-budget: activated, budget=2147483647 tokens`) was the tell.
+
+The **main summarize call keeps reasoning on**. I A/B'd disabling it there too — it's ~45 % faster on cold cache, but on Hindi-English podcasts reasoning-off silently translated Devanagari quotes to English, dropped Devanagari-named resources, and half-ignored the `<episode_context>` block we just paid to extract. Deliberation is what makes Gemma honor the "never paraphrase" and "keep original language" rules. Details in `docs/experiments.md` § "Disabling reasoning on the main summary call".
+
+### Caching and overrides
+
+The orchestrator caches `<id>.episode_context.md` like every other intermediate — re-runs on the same video reuse it unless you pass `-f`. Pass `--no-episode-context` to skip extraction entirely (useful when the description is a pure SEO keyword dump and the extractor would just output the fallback block). Standalone runs of `steps.summarize` accept `--context-file PATH` if you want to hand-write or reuse a context block.
 
 ## What's in a summary
 
