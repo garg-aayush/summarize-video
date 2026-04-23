@@ -168,6 +168,24 @@ can leak into the next speaker's segment).
 
 ---
 
+## Step 6 — Summarize (optional, `steps/summarize.py`)
+
+Not part of the main orchestrator. Takes a `.diarized.txt` (or `.timed.txt`)
+and produces a structured Markdown summary using a local Gemma 4 31B run
+through `llama.cpp`.
+
+```bash
+uv run python -m steps.summarize <id>.diarized.txt --auto-start
+```
+
+Sections in the summary: TL;DR, Key points, Chapters with timestamps,
+Main takeaways, Important quotes, Resources.
+
+Full setup (model download, server flags, prefill tuning, sampling
+defaults) lives in [`docs/summarize.md`](summarize.md).
+
+---
+
 ## TODOs
 
 ### `faster-whisper` for beam search

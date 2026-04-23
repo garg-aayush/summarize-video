@@ -12,5 +12,10 @@ wheels/
 # Claude Code local settings
 .claude/
 
-# Downloaded media
+# Downloaded media (standalone `python -m steps.*` writes here)
 downloads/
+
+# Pipeline output artifacts at repo root (orchestrator default --output-dir)
+/*.timed.*
+/*.diarized.*
+/*.summary.*
