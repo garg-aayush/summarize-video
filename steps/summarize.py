@@ -75,22 +75,24 @@ def _print_loaded_models(server_url: str) -> None:
 def _pick_ubatch_and_ctx() -> tuple[str, str]:
     """Pick (--ubatch-size, -c) based on available VRAM.
 
-    24 GB CUDA cards (4090 / 3090) in the orchestrator flow: 512 / 48K.
+    24 GB CUDA cards (4090 / 3090) in the orchestrator flow: 512 / 64K.
       Going to ubatch 512 trades ~2x prefill speed for ~1 GB of freed
-      activation memory, which we spend on context. 48K fits with
-      ~0.5 GB of headroom after the ~1.2 GB CUDA-context shadow the
-      orchestrator process can't release.
+      activation memory, which we spend on keeping the full 64K. The
+      fit is tight — llama.cpp warns about the 1 GB safety margin —
+      but the actual model + KV + compute buffers land at ~22.3 GB,
+      leaving ~650 MiB of real headroom after the ~1.2 GB CUDA-context
+      shadow the orchestrator process can't release.
 
     Larger CUDA cards (A6000, H100) and Apple Silicon: 1024 / 64K.
-      More memory headroom means we can keep the faster prefill and
-      a bigger context. Macs see ~2x prefill speedup from 512 → 1024.
+      More memory headroom means we can keep the faster prefill at the
+      same context. Macs see ~2x prefill speedup from 512 → 1024.
     """
     try:
         import torch
         if torch.cuda.is_available():
             total_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
             if total_gb < 32:
-                return "512", "49152"
+                return "512", "65536"
     except ImportError:
         pass
     return "1024", "65536"
@@ -108,8 +110,8 @@ def _build_server_cmd(model: Path, host: str, port: int, server_bin: str = DEFAU
     detected VRAM. On 4090-class cards the orchestrator flow keeps ~1.2 GB
     of CUDA context reserved (torch + CT2 + pyannote) that `empty_cache`
     can't free, so we drop ubatch to 512 to claw back ~1 GB of activation
-    headroom and spend it on 48K context. Larger cards and Macs get the
-    faster 1024 / 64K recipe. Any of these can be overridden with
+    headroom and keep the full 64K context. Larger cards and Macs get
+    the faster 1024 / 64K recipe. Either can be overridden with
     --server-cmd.
 
     Mirrors the recipe in docs/summarize.md.
