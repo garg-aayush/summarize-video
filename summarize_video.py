@@ -80,6 +80,8 @@ def run(
     max_speakers: int | None,
     no_diarize: bool,
     force: bool,
+    backend: str | None = None,
+    compute_type: str = "float16",
 ) -> None:
     print(f"Resolving {url}")
     video_id = _resolve_video_id(url)
@@ -112,7 +114,8 @@ def run(
     _done(t0)
 
     # --- 2. transcribe -----------------------------------------------------
-    t0 = _step(f"2/{total_steps} transcribe  model={model} lang={language or 'auto'}")
+    resolved_backend = transcribe_step.resolve_backend(backend)
+    t0 = _step(f"2/{total_steps} transcribe  backend={resolved_backend} model={model} lang={language or 'auto'}")
     if transcript_path.exists() and not force:
         steps_cached.append("transcribe")
         print(f"  cached: {transcript_path}")
@@ -124,6 +127,8 @@ def run(
             word_timestamps=True,
             compression_ratio_threshold=compression_ratio_threshold,
             hallucination_silence_threshold=hallucination_silence_threshold,
+            backend=resolved_backend,
+            compute_type=compute_type,
         )
         transcribe_step.write_outputs(audio_path, result)
         steps_run.append("transcribe")
@@ -241,6 +246,10 @@ def main() -> None:
     )
     parser.add_argument("-m", "--model", default=transcribe_step.DEFAULT_PRESET,
                         help=f"Whisper preset or HF repo (default: {transcribe_step.DEFAULT_PRESET})")
+    parser.add_argument("-b", "--backend", choices=sorted(transcribe_step.MODEL_PRESETS.keys()), default=None,
+                        help=f"Transcription backend. Default: {transcribe_step.DEFAULT_BACKEND} (platform default).")
+    parser.add_argument("--compute-type", default="float16",
+                        help="CTranslate2 compute type (faster backend only). Default: float16.")
     parser.add_argument("-l", "--language", default=None,
                         help="Force language code (e.g., 'hi'). Default: auto-detect.")
     parser.add_argument("--compression-ratio-threshold", type=float, default=None)
@@ -266,6 +275,8 @@ def main() -> None:
         max_speakers=args.max_speakers,
         no_diarize=args.no_diarize,
         force=args.force,
+        backend=args.backend,
+        compute_type=args.compute_type,
     )
 
 
