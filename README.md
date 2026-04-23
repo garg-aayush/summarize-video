@@ -156,12 +156,12 @@ Numbers from my box (RTX 4090 24 GB, i7-12700KF, 32 GB RAM, Ubuntu 24.04) via `.
 
 | case | audio | transcribe | diarize | summarize | total | realtime |
 |---|---|---|---|---|---|---|
-| en (turbo) | 31m 11s | 104.8s | 40.7s | 75.1s | **3m 56s** | 7.9× |
-| hi (v3)    | 8m 14s  | 99.5s  | 13.2s | 56.8s | **3m 4s**  | 2.7× |
+| en (turbo) | 31m 11s | 90.2s  | 57.7s | 79.9s | **4m 5s**  | 7.7× |
+| hi (v3)    | 8m 14s  | 116.1s | 28.4s | 55.2s | **3m 39s** | 2.3× |
 
-Transcribe dominates on short clips; diarize scales with audio length; summarize scales with transcript length. `v3` on an 8-minute Hindi clip takes about as long as `turbo` on a 31-minute English panel — the deeper decoder (32 layers vs 4) is where the multilingual quality comes from.
+Transcribe dominates on short clips; diarize scales with audio length; summarize scales with transcript length. `v3` on an 8-minute Hindi clip takes about as long as `turbo` on a 31-minute English panel — the deeper decoder (32 layers vs 4) is where the multilingual quality comes from. Per-step wall times vary ±10–15% run-to-run on this box — treat these as a single-run snapshot, not a tight average.
 
-Llama-server runs at `--ubatch-size 512 -c 49152` on this card (the orchestrator-aware default for 24 GB CUDA). The smaller ubatch doesn't noticeably slow the summarize step at these transcript sizes — prefill isn't the bottleneck vs server startup + decode — and buys 1.5× more context.
+Llama-server runs at `--ubatch-size 512 -c 65536` on this card (the orchestrator-aware default for 24 GB CUDA). The smaller ubatch doesn't noticeably slow the summarize step at these transcript sizes — prefill isn't the bottleneck vs server startup + decode — and fitting the full 64K on the 4090 leaves plenty of margin for 2-hour podcasts.
 
 Re-run: `./benchmark.sh en`, `./benchmark.sh hi`, or `./benchmark.sh all`. Raw logs and per-step timings land in `benchmark/<video-id>-<platform>-<timestamp>/`.
 
