@@ -36,7 +36,9 @@ def load_pipeline(model: str = DEFAULT_MODEL) -> Pipeline:
             "and https://huggingface.co/pyannote/segmentation-3.0."
         )
     pipeline = Pipeline.from_pretrained(model, token=token)
-    if torch.backends.mps.is_available():
+    if torch.cuda.is_available():
+        pipeline.to(torch.device("cuda"))
+    elif torch.backends.mps.is_available():
         pipeline.to(torch.device("mps"))
     return pipeline
 
