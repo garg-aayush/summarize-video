@@ -19,55 +19,85 @@ URL ─► download ──┤   (mlx-whisper)  (loops) ├─► merge ─► <i
 
 Final output: `[mm:ss - mm:ss] SPEAKER_xx: utterance` lines.
 
-## Setup
+## Quickstart
 
-Requires `uv`, `ffmpeg`, and an `HF_TOKEN` for pyannote.
+### Linux + CUDA (RTX 4090 / similar)
+
+Prereqs: NVIDIA driver R570+ (check with `nvidia-smi`), [`uv`](https://docs.astral.sh/uv/) installed.
 
 ```bash
-# macOS
-brew install ffmpeg
-# Linux
-sudo apt install ffmpeg
+# 1. System deps
+sudo apt install ffmpeg git build-essential
 
-uv sync
+# 2. Clone + install
+git clone <repo-url> summarize-video && cd summarize-video
+uv sync                      # pulls faster-whisper + torch+cu128 (~3-4 GB)
 
+# 3. HF token for pyannote (one-time)
+#    Create a read token at https://huggingface.co/settings/tokens, then
+#    accept the gates on each of these pages while signed in:
+#      https://huggingface.co/pyannote/speaker-diarization-3.1
+#      https://huggingface.co/pyannote/segmentation-3.0
+#      https://huggingface.co/pyannote/speaker-diarization-community-1
 export HF_TOKEN=hf_xxx...
-# accept the gates on each pyannote model page (one-time):
-#   https://huggingface.co/pyannote/speaker-diarization-3.1
-#   https://huggingface.co/pyannote/segmentation-3.0
-#   https://huggingface.co/pyannote/speaker-diarization-community-1
+
+# 4. Transcribe a video (first run downloads ~2 GB of models)
+LD_LIBRARY_PATH= uv run python summarize_video.py \
+  "https://www.youtube.com/watch?v=HeAGWTgi4sU" -l en
 ```
 
-### Linux / CUDA specifics
+The `LD_LIBRARY_PATH=` prefix is only needed if the system has an older
+cuDNN installed (common when a CUDA Toolkit is present) that shadows
+torch's bundled one — drop it otherwise.
 
-`uv sync` pulls `faster-whisper` and a `torch+cu128` wheel (instead of
-`mlx-whisper`). This targets CUDA driver R570+ (CUDA 12.8). If you have a
-newer driver (R580+) you can pin to the default cu130 wheel by removing
-the `[tool.uv.sources]` block in `pyproject.toml`.
+### macOS (Apple Silicon)
 
-If you have a system cuDNN installed (e.g. from the CUDA Toolkit) and it
-shadows torch's bundled cuDNN, you may see
-`RuntimeError: cuDNN version incompatibility` when pyannote runs on CUDA.
-Fix by clearing `LD_LIBRARY_PATH` for the run, so torch uses its own
-bundled cuDNN:
+```bash
+brew install ffmpeg
+git clone <repo-url> summarize-video && cd summarize-video
+uv sync
+export HF_TOKEN=hf_xxx...    # accept the 3 pyannote model gates as above
+uv run python summarize_video.py \
+  "https://www.youtube.com/watch?v=HeAGWTgi4sU" -l en
+```
+
+### Outputs (both platforms)
+
+Three files land in the current working directory:
+
+- `<id>.txt` — plain deduped text
+- `<id>.timed.txt` — `[mm:ss - mm:ss] text`
+- `<id>.diarized.txt` — `[mm:ss - mm:ss] SPEAKER_xx: text`
+
+Intermediate artifacts (audio, JSON, 16 kHz wav, pyannote output) live in
+`/tmp/summarize-video-<id>/`, so re-running the same URL skips finished
+steps. Pass `-f` to force a full re-run.
+
+## Linux / CUDA notes
+
+`uv sync` on Linux pulls `faster-whisper` and a `torch+cu128` wheel
+(instead of `mlx-whisper`). This targets driver R570+ (CUDA 12.8). If you
+have R580+ you can drop to the default cu130 wheel by removing the
+`[tool.uv.sources]` block in `pyproject.toml`.
+
+If the system has cuDNN installed (e.g. from the CUDA Toolkit) and it's
+older than torch's bundled one, pyannote will crash with
+`RuntimeError: cuDNN version incompatibility`. Clear `LD_LIBRARY_PATH`
+for the run so torch finds its own:
 
 ```bash
 LD_LIBRARY_PATH= uv run python summarize_video.py "<URL>" -l en
 ```
 
-## Run
+## More run examples
 
 ```bash
-# English podcast — defaults are tuned for this; just force the language
-# so Whisper doesn't waste a chunk auto-detecting.
-uv run python summarize_video.py "<URL>" -l en
-
 # Hindi-English code-switched (best params we've found)
 uv run python summarize_video.py "<URL>" -m v3 -l hi \
   --compression-ratio-threshold 2.0 \
   --hallucination-silence-threshold 2.0
 
-# Known speaker count helps diarization (works with any language)
+# Known speaker count helps diarization
 uv run python summarize_video.py "<URL>" -l en --num-speakers 2
 
 # Skip diarization entirely (faster; plain + timed transcript only)
@@ -75,23 +105,10 @@ uv run python summarize_video.py "<URL>" -l en --no-diarize
 
 # Drop final transcripts in a specific folder
 uv run python summarize_video.py "<URL>" -l en -o ~/Documents/transcripts/
+
+# Force a full re-run, ignoring cached intermediates
+uv run python summarize_video.py "<URL>" -l en -f
 ```
-
-### Where outputs go
-
-Intermediate files (audio, raw JSON, diarization, etc.) land in a per-URL
-system temp dir (`/tmp/summarize-video-<id>/`). Re-running the same URL
-skips any step whose output is already in there, so re-runs are cheap and
-crash-resumable. Pass `-f` to force a full re-run.
-
-The **final transcripts** are copied into `--output-dir` (default: current
-working directory):
-
-| file | when | content |
-|---|---|---|
-| `<id>.txt` | always | plain deduped text |
-| `<id>.timed.txt` | always | `[mm:ss - mm:ss] text` per segment |
-| `<id>.diarized.txt` | unless `--no-diarize` | `[mm:ss - mm:ss] SPEAKER_xx: text` |
 
 The pipeline prints a summary at the end with the work-dir path, steps run
 vs cached, language, word/segment/speaker counts, and the final output
