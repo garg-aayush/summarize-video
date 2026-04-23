@@ -147,6 +147,22 @@ The pipeline prints a summary at the end with the work-dir path, steps run vs ca
 
 Reference test clip: [`HeAGWTgi4sU`](https://www.youtube.com/watch?v=HeAGWTgi4sU) (~8 min, Hindi-English).
 
+## Benchmarks
+
+Numbers from my box (RTX 4090 24 GB, i7-12700KF, 32 GB RAM, Ubuntu 24.04) via `./benchmark.sh all` — cold cache, `-f` forced, summarize on. Two canonical cases:
+
+- **en** — 31-min English panel, `turbo` + 3 speakers
+- **hi** — 8-min Hindi-English clip, `v3` + 2 speakers
+
+| case | audio | transcribe | diarize | summarize | total | realtime |
+|---|---|---|---|---|---|---|
+| en (turbo) | 31m 11s | 95.7s | 37.5s | 75.1s | **3m 44s** | 8.4× |
+| hi (v3)    | 8m 14s  | 95.2s | 14.1s | 54.1s | **3m 7s**  | 2.6× |
+
+Transcribe dominates on short clips; diarize scales with audio length; summarize scales with transcript length. `v3` on an 8-minute Hindi clip takes about as long as `turbo` on a 31-minute English panel — the deeper decoder (32 layers vs 4) is where the multilingual quality comes from.
+
+Re-run: `./benchmark.sh en`, `./benchmark.sh hi`, or `./benchmark.sh all`. Raw logs and per-step timings land in `benchmark/<video-id>-<platform>-<timestamp>/`.
+
 ## Run individual steps
 
 If you want to re-run just one stage, I've made each module invocable directly:
