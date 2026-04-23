@@ -3,8 +3,9 @@
 Local pipeline that turns a YouTube URL into a speaker-attributed transcript
 and (optionally) a structured summary. Built for podcast-style
 discussions — English, or Hindi + English code-switched. Uses `yt-dlp` for
-audio, `mlx-whisper` for transcription, and `pyannote.audio` for
-diarization — all running on-device.
+audio, Whisper for transcription (`mlx-whisper` on Apple Silicon,
+`faster-whisper` on Linux/CUDA), and `pyannote.audio` for diarization —
+all running on-device.
 
 ## Pipeline
 
@@ -23,7 +24,11 @@ Final output: `[mm:ss - mm:ss] SPEAKER_xx: utterance` lines.
 Requires `uv`, `ffmpeg`, and an `HF_TOKEN` for pyannote.
 
 ```bash
+# macOS
 brew install ffmpeg
+# Linux
+sudo apt install ffmpeg
+
 uv sync
 
 export HF_TOKEN=hf_xxx...
@@ -31,6 +36,23 @@ export HF_TOKEN=hf_xxx...
 #   https://huggingface.co/pyannote/speaker-diarization-3.1
 #   https://huggingface.co/pyannote/segmentation-3.0
 #   https://huggingface.co/pyannote/speaker-diarization-community-1
+```
+
+### Linux / CUDA specifics
+
+`uv sync` pulls `faster-whisper` and a `torch+cu128` wheel (instead of
+`mlx-whisper`). This targets CUDA driver R570+ (CUDA 12.8). If you have a
+newer driver (R580+) you can pin to the default cu130 wheel by removing
+the `[tool.uv.sources]` block in `pyproject.toml`.
+
+If you have a system cuDNN installed (e.g. from the CUDA Toolkit) and it
+shadows torch's bundled cuDNN, you may see
+`RuntimeError: cuDNN version incompatibility` when pyannote runs on CUDA.
+Fix by clearing `LD_LIBRARY_PATH` for the run, so torch uses its own
+bundled cuDNN:
+
+```bash
+LD_LIBRARY_PATH= uv run python summarize_video.py "<URL>" -l en
 ```
 
 ## Run
@@ -80,12 +102,14 @@ paths.
 | flag | when to use |
 |---|---|
 | `-m v3` | Non-English / accented / code-switched audio. Slower than `turbo` but multilingual quality is much better. |
+| `-b {mlx,faster}` | Override the auto-selected backend. Default: `mlx` on Apple Silicon, `faster` on Linux. |
 | `-l <code>` | Force language (`hi`, `en`, …). Default auto-detects from the first chunk, which can mis-fire on code-switched audio. |
 | `--no-diarize` | Skip steps 4 + 5. Useful when you don't care who said what (saves the pyannote download + ~minutes of compute). |
 | `-o DIR` | Where final transcripts land. Default: current working directory. |
 | `--compression-ratio-threshold 2.0` | Catch repetition loops earlier (default 2.4). Lower = more aggressive temperature-fallback re-decoding. |
 | `--hallucination-silence-threshold 2.0` | Suppress text generated during silences > N seconds. |
 | `--num-speakers N` / `--min-speakers` / `--max-speakers` | Hint the diarizer when you know the count. |
+| `--compute-type` | CTranslate2 compute type for the `faster` backend. Default `float16`; try `int8_float16` for lower VRAM. |
 
 Reference test clip:
 [`HeAGWTgi4sU`](https://www.youtube.com/watch?v=HeAGWTgi4sU) (~8 min,
@@ -160,11 +184,12 @@ downloads/                # default sink for `python -m steps.*` (gitignored).
 
 ## TODO
 
-- **`faster-whisper` backend** — beam search + `no_repeat_ngram_size` would
-  prevent repetition loops at decode time instead of after the fact.
 - **wav2vec2 forced alignment** — replace Whisper's DTW word timestamps
   with phoneme-level alignment to fix word-leakage at speaker turn changes.
 - **Speaker name attribution** — map `SPEAKER_00` / `SPEAKER_01` / … to
   actual names.
+- **`no_repeat_ngram_size` on the faster backend** — CTranslate2 exposes
+  it; wiring it through would prevent repetition loops at decode time
+  rather than after the fact in `dedupe.py`.
 
 Details for each in [`docs/pipeline.md`](docs/pipeline.md#todos).

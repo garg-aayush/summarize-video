@@ -4,12 +4,17 @@ How to set up the local model server that powers `steps/summarize.py`.
 
 ## Hardware target
 
-Apple Silicon Mac with a Max-class chip and **36 GB unified memory**. Less
-RAM means a smaller quant or smaller model.
+Either:
+- Apple Silicon Mac with a Max-class chip and **36 GB unified memory**, or
+- Linux box with an NVIDIA GPU ≥ **24 GB VRAM** (e.g. RTX 4090).
+
+Less memory means a smaller quant or smaller model.
 
 ---
 
 ## 1. Install llama.cpp
+
+### macOS (Metal)
 
 ```bash
 brew install llama.cpp
@@ -25,6 +30,25 @@ cd llama.cpp
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=ON
 cmake --build build --config Release -j$(sysctl -n hw.logicalcpu)
 ```
+
+### Linux (CUDA)
+
+No pre-built `llama-server` with CUDA in the standard apt repos; build
+from source:
+
+```bash
+sudo apt install cmake build-essential libcurl4-openssl-dev
+git clone https://github.com/ggml-org/llama.cpp.git
+cd llama.cpp
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=ON
+cmake --build build --config Release -j$(nproc)
+# binary lands at build/bin/llama-server — symlink into ~/.local/bin (or
+# add build/bin to PATH) so `--auto-start` can find it:
+ln -sf "$PWD/build/bin/llama-server" ~/.local/bin/llama-server
+```
+
+Requires the CUDA toolkit (`nvcc`) to match your driver. A driver at
+R570 (CUDA 12.8) builds fine against CUDA 12.8 or 12.x toolkits.
 
 ## 2. Download the model
 
@@ -83,17 +107,21 @@ Flags:
 
 | flag | what it does |
 |---|---|
-| `-ngl 99` | Offload all layers to Metal (GPU). |
+| `-ngl 99` | Offload all layers to the GPU (Metal on Mac, CUDA on Linux). |
 | `-c 65536` | 64K context — enough for a ~2-hour video. Push higher (128K, 256K) if you need it. |
 | `--flash-attn on` | Flash attention. Required when using a quantized KV cache. |
 | `--cache-type-k q8_0` / `--cache-type-v q8_0` | 8-bit KV cache. Halves its memory, near-lossless quality. |
 | `--parallel 1` | One concurrent slot. We're not multiplexing requests. |
 | `--batch-size 2048` | Tokens per logical prefill batch. |
-| `--ubatch-size 1024` | Tokens per Metal kernel call. **The main prefill-speed knob** — 2× the default 512. Push to 2048 if you've got memory headroom. |
+| `--ubatch-size 1024` | Tokens per GPU kernel call. **The main prefill-speed knob** — 2× the default 512. Push to 2048 on 24 GB+ GPUs (4090, etc.) where VRAM isn't tight. |
 | `--context-shift` | Slide the window when input exceeds context, instead of failing. |
 | `--metrics` | Expose Prometheus-style stats at `/metrics` for tuning. |
 | `--jinja` | Use the model's embedded chat template. Required for Gemma 4. |
 | `--host 127.0.0.1 --port 8080` | Bind to localhost only. |
+
+On a 4090 (24 GB VRAM), the full stack fits comfortably: 18.8 GB model +
+~3 GB q8 KV + ~2 GB activations. Bumping `--ubatch-size` to 2048 is
+safe there; on the 36 GB Mac it's tighter (watch Activity Monitor).
 
 ### Why these flags help summarization specifically
 

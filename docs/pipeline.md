@@ -7,11 +7,14 @@ Hindi + English code-switched.
 
 ```
                   ┌─► transcribe ─► dedupe ─┐
-URL ─► download ──┤   (mlx-whisper)  (loops) ├─► merge ─► <id>.diarized.txt
+URL ─► download ──┤  (whisper)      (loops) ├─► merge ─► <id>.diarized.txt
    (yt-dlp)       │                          │
                   └─► diarize ───────────────┘
                        (pyannote)
 ```
+
+Transcribe uses `mlx-whisper` on Apple Silicon and `faster-whisper`
+(CTranslate2) on Linux/CUDA; both are selected automatically by platform.
 
 ---
 
@@ -48,12 +51,27 @@ uv run yt-dlp --extractor-args "youtube:player_client=tv_simply,web_embedded,and
 
 ## Step 2 — Transcribe (`steps/transcribe.py`)
 
-Runs Whisper locally via Apple MLX. Two presets:
+Runs Whisper locally. Two backends, chosen by platform:
 
-| preset | model | size | when |
-|---|---|---|---|
-| `turbo` (default) | `mlx-community/whisper-large-v3-turbo` (fp16) | ~1.6 GB | English, fast |
-| `v3` | `mlx-community/whisper-large-v3-mlx-8bit` | ~1.6 GB | multilingual / accented / noisy |
+| backend | runtime | when |
+|---|---|---|
+| `mlx` (default on Apple Silicon) | `mlx-whisper` on Metal | Macs |
+| `faster` (default on Linux) | `faster-whisper` / CTranslate2 on CUDA | Linux / NVIDIA |
+
+Override with `-b {mlx,faster}`. Preset names are the same across
+backends; the concrete HF repo differs because MLX and CT2 use different
+model formats:
+
+| preset | mlx repo | faster repo | size | when |
+|---|---|---|---|---|
+| `turbo` (default) | `mlx-community/whisper-large-v3-turbo` | `Systran/faster-whisper-large-v3` | ~1.6 GB / ~3 GB | English, fast |
+| `v3` | `mlx-community/whisper-large-v3-mlx-8bit` | `Systran/faster-whisper-large-v3` | ~1.6 GB / ~3 GB | multilingual / accented / noisy |
+
+Both `faster` presets currently point at the full v3 — there is no 1:1
+CT2 port of the distilled turbo from Systran. On a 4090 the full v3 is
+already faster than mlx turbo on a Mac, so the aliasing is fine for now.
+Swap in `deepdml/faster-whisper-large-v3-turbo-ct2` if a true turbo
+distill is wanted later.
 
 Turbo is the distilled 4-decoder large-v3-turbo and is English-tuned — its
 multilingual quality is markedly worse than `v3`. Use `v3` for non-English
@@ -95,7 +113,8 @@ uv run python -m steps.transcribe downloads/<id>.m4a -m v3 -l hi \
 | `--compression-ratio-threshold` | Default 2.4. Lower (e.g. 2.0) catches repetition loops earlier and triggers temperature-fallback re-decoding sooner. |
 | `--hallucination-silence-threshold` | Suppress text generated during silent stretches longer than N seconds. Helps with long monologues that drift into silence. |
 | `--temperature` | One value (e.g. 0.0) or the full fallback ladder. |
-| `--beam-size` | Currently raises `NotImplementedError` in mlx-whisper 0.4.3 (no beam search). Kept for forward-compat. |
+| `--beam-size` | `faster` backend: default 5. `mlx` backend: raises `NotImplementedError` on mlx-whisper 0.4.3 (greedy only). |
+| `--compute-type` | `faster` backend only. CTranslate2 compute type: `float16` (default, 4090), `int8_float16` (lower VRAM). |
 
 ---
 
@@ -190,14 +209,13 @@ defaults) lives in [`docs/summarize.md`](summarize.md).
 
 ## TODOs
 
-### `faster-whisper` for beam search
+### `no_repeat_ngram_size` on the faster backend
 
-mlx-whisper 0.4.3 is greedy-only (no beam search) and even with temperature
-fallback can stay stuck on attractors for long Hindi monologues.
-`faster-whisper` (CTranslate2 backend) supports beam search,
-`no_repeat_ngram_size`, and `suppress_tokens`, all of which would address
-loops at the source rather than after the fact. Tradeoff: we lose Apple
-Neural Engine acceleration, though CT2 on Mac is still fast.
+The CUDA `faster` backend already gives us beam search by default, which
+prevents most of the repetition loops that `dedupe.py` was originally
+written to clean up. CTranslate2 also exposes `no_repeat_ngram_size` and
+`suppress_tokens`; wiring them through would be the natural next step for
+eliminating loops at decode time instead of after the fact.
 
 ### wav2vec2 forced alignment
 

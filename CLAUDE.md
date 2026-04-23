@@ -5,8 +5,9 @@
 Local pipeline to summarize YouTube videos with a focus on podcast-style
 discussions (English, or Hindi + English code-switched): URL →
 speaker-attributed transcript (+ optional local-LLM summary). Components:
-`yt-dlp`, `mlx-whisper`, `pyannote.audio`, and `llama.cpp` (Gemma 4 31B) —
-all on-device.
+`yt-dlp`, Whisper (`mlx-whisper` on Apple Silicon / `faster-whisper` on
+Linux+CUDA), `pyannote.audio`, and `llama.cpp` (Gemma 4 31B) — all
+on-device.
 
 ## Layout
 
@@ -71,3 +72,6 @@ The summarize step needs `llama-server` running. The script can spawn it:
 - HF CLI: it's `hf download` now (not `huggingface-cli download`).
   `hf_xet` ships by default; `hf_transfer` is deprecated.
 - mlx-whisper: 0.4.3 is greedy-only (`NotImplementedError` on `beam_size > 1`).
+- Linux/CUDA cuDNN: if the system has cuDNN on `LD_LIBRARY_PATH` and it's
+  older than the one torch bundles, pyannote will crash with "cuDNN
+  version incompatibility". Workaround: `LD_LIBRARY_PATH= uv run ...`.
