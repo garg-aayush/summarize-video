@@ -86,13 +86,20 @@ def _build_server_cmd(model: Path, host: str, port: int, server_bin: str = DEFAU
     (19 GB weights + 3 GB q8 KV + 4 GB activations > 24 GB). On bigger
     cards (e.g. A6000 48 GB) push it via --server-cmd.
 
+    `-c 32768` rather than 65536 because the orchestrator's own CUDA
+    context (torch + CT2 + pyannote) keeps ~1.2 GB reserved even after
+    empty_cache — that shadow leaves only ~23 GB visible to llama-server,
+    which 65K projects over. 32K fits with ~1.5 GB of headroom, and is
+    still plenty: a 2-hour transcript is ~15K tokens. Bigger cards or
+    standalone llama-server runs can bump it via --server-cmd.
+
     Mirrors the recipe in docs/summarize.md.
     """
     return [
         server_bin,
         "-m", str(model),
         "-ngl", "99",
-        "-c", "65536",
+        "-c", "32768",
         "--flash-attn", "on",
         "--cache-type-k", "q8_0",
         "--cache-type-v", "q8_0",
