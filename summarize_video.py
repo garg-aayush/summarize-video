@@ -59,17 +59,34 @@ def _done(t0: float) -> None:
 
 def _free_gpu() -> None:
     """Release whisper/pyannote GPU references so llama-server has the
-    full card to itself. Gemma 4 31B Q4_K_XL needs ~22 GB on a 24 GB
-    card — anything else holding VRAM (cached PyTorch blocks, lingering
-    CT2 contexts) will OOM the model load."""
-    gc.collect()
+    full card to itself. Gemma 4 31B Q4_K_XL at 64K context sits within
+    ~500 MB of the 24 GB limit on a 4090, so cached PyTorch blocks or
+    lingering CT2 contexts will OOM the model load.
+
+    Order matters: synchronize first (drain pending CUDA work), then two
+    gc passes (first drops refs, second breaks cycles the first uncovered),
+    then empty_cache to return freed blocks to the driver. Logs the
+    before/after so failures are debuggable."""
     try:
         import torch
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
+        if not torch.cuda.is_available():
+            gc.collect()
+            return
     except ImportError:
-        pass
+        gc.collect()
+        return
+
+    before_free, total = torch.cuda.mem_get_info()
+    torch.cuda.synchronize()
+    gc.collect()
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
+    after_free, _ = torch.cuda.mem_get_info()
+    freed_mb = (after_free - before_free) / 1024 / 1024
+    free_mb = after_free / 1024 / 1024
+    total_mb = total / 1024 / 1024
+    print(f"  freed {freed_mb:+.0f} MiB, {free_mb:.0f}/{total_mb:.0f} MiB now free")
 
 
 def _fmt_ts(seconds: float) -> str:
