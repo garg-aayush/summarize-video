@@ -10,7 +10,7 @@ Turning audio into text. Whisper is an ASR model.
 
 ## Whisper
 
-OpenAI's speech-to-text model. Two relevant properties for us:
+OpenAI's speech-to-text model. Two relevant properties for me:
 
 - **Encoder–decoder transformer.** The encoder ingests a 30-second mel spectrogram, the decoder generates text tokens autoregressively.
 - **Multilingual.** Trained on 99 languages and on translation tasks. You can force a language with `language="hi"` or let it auto-detect from the first chunk.
@@ -20,7 +20,7 @@ OpenAI's speech-to-text model. Two relevant properties for us:
 Two flavors of the same family:
 
 - **large-v3** — 32 decoder layers, the high-quality reference model.
-- **large-v3-turbo** — distilled down to **4 decoder layers**, ~5–8× faster, but English-tuned. Multilingual quality drops noticeably (e.g., it mis-detects Hindi as English on our test clip).
+- **large-v3-turbo** — distilled down to **4 decoder layers**, ~5–8× faster, but English-tuned. Multilingual quality drops noticeably (e.g., it mis-detects Hindi as English on my test clip).
 
 ## MLX / mlx-whisper
 
@@ -54,7 +54,7 @@ Whisper sometimes "hallucinates" text during long silences — generating plausi
 
 ## initial_prompt
 
-A string fed to the decoder before the first chunk. Originally meant to bias vocabulary (e.g., proper nouns, technical terms). In practice on our data it backfired — the decoder over-anchored to the prompt and locked the first chunk into a loop. We don't use it.
+A string fed to the decoder before the first chunk. Originally meant to bias vocabulary (e.g., proper nouns, technical terms). In practice on my data it backfired — the decoder over-anchored to the prompt and locked the first chunk into a loop. I don't use it.
 
 ## DTW (Dynamic Time Warping) word timestamps
 
@@ -62,11 +62,11 @@ Whisper doesn't natively know where each word begins and ends — only chunk tex
 
 ## Forced alignment / wav2vec2
 
-A more accurate way to get word timestamps: take the already-known transcript and "force" it onto the audio using a phoneme-level acoustic model like wav2vec2. Each phoneme's location in the audio is found exactly, so word boundaries are tight. This is what [whisperx](https://github.com/m-bain/whisperX) does internally and what our `align.py` TODO would add.
+A more accurate way to get word timestamps: take the already-known transcript and "force" it onto the audio using a phoneme-level acoustic model like wav2vec2. Each phoneme's location in the audio is found exactly, so word boundaries are tight. This is what [whisperx](https://github.com/m-bain/whisperX) does internally and what my `align.py` TODO would add.
 
 ## Attractor (repetition loop)
 
-A degenerate decoding state where greedy sampling keeps re-emitting the same short n-gram (`thank you thank you ...×30`,  `सबसे सबसे ...×30`). Caused by the local maximum trap of greedy decoding. Beam search, `no_repeat_ngram_size`, and `suppress_tokens` are the textbook fixes — none available in mlx-whisper 0.4.3, which is why we have `dedupe.py`.
+A degenerate decoding state where greedy sampling keeps re-emitting the same short n-gram (`thank you thank you ...×30`,  `सबसे सबसे ...×30`). Caused by the local maximum trap of greedy decoding. Beam search, `no_repeat_ngram_size`, and `suppress_tokens` are the textbook fixes — none available in mlx-whisper 0.4.3, which is why I have `dedupe.py`.
 
 ## Diarization
 
@@ -74,7 +74,7 @@ A degenerate decoding state where greedy sampling keeps re-emitting the same sho
 
 ## pyannote / pyannote.audio
 
-The leading open-source diarization toolkit. `pyannote/speaker-diarization-3.1` is the pretrained pipeline we use. It chains:
+The leading open-source diarization toolkit. `pyannote/speaker-diarization-3.1` is the pretrained pipeline I use. It chains:
 
 1. Voice activity detection (where is anyone speaking)
 2. Speaker segmentation (where do speakers change)
@@ -110,7 +110,7 @@ YouTube exposes its catalog through several internal "client" identities (web, i
 - requiring a **PO Token** (proof of origin) on `web`/`ios`/`mweb` — formats served without it are skipped
 - gating the `tv` client behind a **DRM experiment** that flags every format as DRM-protected
 
-`yt-dlp` lets us pick which clients to ask via `extractor_args="youtube:player_client=..."`. We use `web_embedded` + `android_vr`, which still serve plain m4a without either restriction.
+`yt-dlp` lets me pick which clients to ask via `extractor_args="youtube:player_client=..."`. I use `web_embedded` + `android_vr`, which still serve plain m4a without either restriction.
 
 ## HF gated models
 

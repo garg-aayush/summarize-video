@@ -1,6 +1,6 @@
-# Experiments — what we tried
+# Experiments — what I tried
 
-A running log of decisions and dead-ends. Each entry: what we wanted, what we tried, what we learned. New entries go on top.
+A running log of decisions and dead-ends. Each entry: what I wanted, what I tried, what I learned. New entries go on top.
 
 ---
 
@@ -42,7 +42,7 @@ A running log of decisions and dead-ends. Each entry: what we wanted, what we tr
 
 **Hypothesis.** Use `large-v3-turbo` (faster, distilled) for everything since it's the new default.
 
-**Result.** Turbo auto-detected our Hindi-English clip as English and produced garbled romanization. Full `v3` correctly detected Hindi and produced clean Devanagari + Latin Hinglish. Settled on:
+**Result.** Turbo auto-detected my Hindi-English clip as English and produced garbled romanization. Full `v3` correctly detected Hindi and produced clean Devanagari + Latin Hinglish. Settled on:
 - **turbo** — default, English-tuned audio
 - **v3** — non-English / accented / code-switched
 
@@ -64,7 +64,7 @@ No verifier loop, no second pass. The "self-correcting" appearance comes from Wh
 
 ## quant variants on HF that don't exist or don't load
 
-**Hypothesis.** `mlx-community/whisper-large-v3-turbo-q8` will give us a smaller turbo.
+**Hypothesis.** `mlx-community/whisper-large-v3-turbo-q8` will give me a smaller turbo.
 
 **Result.** That repo doesn't exist (404). The `-8bit` suffix variant exists (`mlx-community/whisper-large-v3-turbo-8bit`) but ships `model.safetensors` instead of `weights.safetensors` / `weights.npz`, which mlx-whisper doesn't pick up. Settled on the un-quantized `mlx-community/whisper-large-v3-turbo` for turbo (fp16, ~1.6 GB) and `mlx-community/whisper-large-v3-mlx-8bit` for v3 (8-bit, ~1.6 GB).
 

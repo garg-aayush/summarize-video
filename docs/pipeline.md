@@ -26,12 +26,12 @@ Output: `downloads/<id>.m4a` (stereo AAC, source bitrate preserved).
 
 ### YouTube extractor notes
 
-YouTube has been pushing hard against `yt-dlp`. Two recent failure modes we hit and the workaround we settled on:
+YouTube has been pushing hard against `yt-dlp`. Two recent failure modes I hit and the workaround I settled on:
 
 - `ios` / `web` / `mweb` clients now require a GVS PO Token and skip all formats without one.
 - `tv` client is currently flagged with a session-level DRM experiment (yt-dlp issue #12563) that marks all formats as DRM-protected.
 
-We use `web_embedded` + `android_vr` clients, which still serve plain m4a audio formats without PO tokens and are not affected by the DRM experiment. If those break in the future, probe available clients with:
+I use `web_embedded` + `android_vr` clients, which still serve plain m4a audio formats without PO tokens and are not affected by the DRM experiment. If those break in the future, probe available clients with:
 
 ```bash
 uv run yt-dlp --extractor-args "youtube:player_client=tv_simply,web_embedded,android_vr" -F "<URL>"
@@ -66,7 +66,7 @@ Override with `-b {mlx,faster}`. Preset names are the same across backends; the 
 
 Both `faster` presets currently point at the full v3 — there is no 1:1 CT2 port of the distilled turbo from Systran. On a 4090 the full v3 is already faster than mlx turbo on a Mac, so the aliasing is fine for now. Swap in `deepdml/faster-whisper-large-v3-turbo-ct2` if a true turbo distill is wanted later.
 
-Turbo is the distilled 4-decoder large-v3-turbo and is English-tuned — its multilingual quality is markedly worse than `v3`. Use `v3` for non-English or code-switched audio (we observed turbo mis-detecting our Hindi-English test clip as English; v3 detected Hindi).
+Turbo is the distilled 4-decoder large-v3-turbo and is English-tuned — its multilingual quality is markedly worse than `v3`. Use `v3` for non-English or code-switched audio (I observed turbo mis-detecting my Hindi-English test clip as English; v3 detected Hindi).
 
 ```bash
 uv run python -m steps.transcribe downloads/<id>.m4a              # turbo
@@ -179,11 +179,11 @@ Full setup (model download, server flags, prefill tuning, sampling defaults) liv
 
 ### `no_repeat_ngram_size` on the faster backend
 
-The CUDA `faster` backend already gives us beam search by default, which prevents most of the repetition loops that `dedupe.py` was originally written to clean up. CTranslate2 also exposes `no_repeat_ngram_size` and `suppress_tokens`; wiring them through would be the natural next step for eliminating loops at decode time instead of after the fact.
+The CUDA `faster` backend already gives me beam search by default, which prevents most of the repetition loops that `dedupe.py` was originally written to clean up. CTranslate2 also exposes `no_repeat_ngram_size` and `suppress_tokens`; wiring them through would be the natural next step for eliminating loops at decode time instead of after the fact.
 
 ### wav2vec2 forced alignment
 
-Replace Whisper's DTW word timestamps with phoneme-level forced alignment against the audio (the technique whisperx uses internally). Each word's start/end gets snapped to the actual acoustic boundary, eliminating the trailing-word-leaks-into-next-speaker artifact we see at turn changes. Models to consider: `facebook/wav2vec2-base-960h` (English) or a Hindi/multilingual variant for code-switched audio. Adds an `align.py` step between `steps/transcribe.py` and `steps/merge.py`.
+Replace Whisper's DTW word timestamps with phoneme-level forced alignment against the audio (the technique whisperx uses internally). Each word's start/end gets snapped to the actual acoustic boundary, eliminating the trailing-word-leaks-into-next-speaker artifact I see at turn changes. Models to consider: `facebook/wav2vec2-base-960h` (English) or a Hindi/multilingual variant for code-switched audio. Adds an `align.py` step between `steps/transcribe.py` and `steps/merge.py`.
 
 ### Speaker name attribution
 

@@ -1,6 +1,6 @@
 # summarize-video
 
-Local pipeline that turns a YouTube URL into a speaker-attributed transcript and a structured Markdown summary. Built for podcast-style discussions — English, or Hindi + English code-switched. Uses `yt-dlp` for audio, Whisper for transcription (`mlx-whisper` on Apple Silicon, `faster-whisper` on Linux/CUDA), `pyannote.audio` for diarization, and `llama.cpp` (Gemma 4 31B) for summarization — all running on-device.
+Local pipeline I built to turn a YouTube URL into a speaker-attributed transcript and a structured Markdown summary. Aimed at podcast-style discussions — English, or Hindi + English code-switched. Uses `yt-dlp` for audio, Whisper for transcription (`mlx-whisper` on Apple Silicon, `faster-whisper` on Linux/CUDA), `pyannote.audio` for diarization, and `llama.cpp` (Gemma 4 31B) for summarization — all running on-device.
 
 ## Pipeline
 
@@ -107,7 +107,7 @@ On Linux, Chrome/Brave encrypt their cookie jar against the system keyring (gnom
 ## More run examples
 
 ```bash
-# Hindi-English code-switched (best params we've found)
+# Hindi-English code-switched (best params I've found)
 uv run python summarize_video.py "<URL>" -m v3 -l hi \
   --compression-ratio-threshold 2.0 \
   --hallucination-silence-threshold 2.0
@@ -149,7 +149,7 @@ Reference test clip: [`HeAGWTgi4sU`](https://www.youtube.com/watch?v=HeAGWTgi4sU
 
 ## Run individual steps
 
-If you want to re-run just one stage, each module is invocable directly:
+If you want to re-run just one stage, I've made each module invocable directly:
 
 ```bash
 uv run python -m steps.download   "<URL>"
@@ -191,7 +191,7 @@ steps/
 docs/
   pipeline.md             # deep-dive on each step + flags
   definitions.md          # glossary (Whisper, MLX, DTW, diarization, …)
-  experiments.md          # things we tried and what we learned
+  experiments.md          # things I tried and what I learned
   summarize.md            # llama.cpp + Gemma 4 31B setup for steps/summarize.py
 downloads/                # default sink for `python -m steps.*` (gitignored).
                           # The orchestrator uses /tmp/summarize-video-<id>/ instead.

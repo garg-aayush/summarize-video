@@ -104,7 +104,7 @@ Flags:
 | `-c 65536` | 64K context — enough for a ~2-hour video. Push higher (128K, 256K) if you need it. |
 | `--flash-attn on` | Flash attention. Required when using a quantized KV cache. |
 | `--cache-type-k q8_0` / `--cache-type-v q8_0` | 8-bit KV cache. Halves its memory, near-lossless quality. |
-| `--parallel 1` | One concurrent slot. We're not multiplexing requests. |
+| `--parallel 1` | One concurrent slot. I'm not multiplexing requests. |
 | `--batch-size 2048` | Tokens per logical prefill batch. |
 | `--ubatch-size 1024` | Tokens per GPU kernel call. **The main prefill-speed knob** — 2× the default 512. Going higher (2048) buys ~2× prefill speed but adds ~4 GB activations, which OOMs the 4090 (19 GB weights + 3 GB q8 KV + 4 GB activations > 24 GB). On 48 GB+ cards (A6000, H100) push it via `--server-cmd`. |
 | `--context-shift` | Slide the window when input exceeds context, instead of failing. |
@@ -116,7 +116,7 @@ On a 4090 (24 GB VRAM) at `--ubatch-size 1024`: 18.8 GB model + ~3 GB q8 KV + ~2
 
 ### Why these flags help summarization specifically
 
-Summarization is **prefill-bound**: a one-hour video can be 30K–60K input tokens but the summary is only ~1–2K output tokens, so we spend most of the wall-clock time digesting the input before generating anything.
+Summarization is **prefill-bound**: a one-hour video can be 30K–60K input tokens but the summary is only ~1–2K output tokens, so I spend most of the wall-clock time digesting the input before generating anything.
 
 The main lever is `--ubatch-size` (the size of the chunk of tokens processed in a single Metal kernel call). The default 512 is conservative for memory-tight setups; bumping to **1024** roughly halves prefill time on Apple Silicon at the cost of ~1 GB extra activation memory during prefill. **2048** roughly halves it again if you have room (model 18.8 GB + KV ~3 GB + ~2 GB activations + ~7 GB OS still fits in 36 GB, but it's tighter — watch Activity Monitor).
 
@@ -131,7 +131,7 @@ curl http://127.0.0.1:8080/v1/models
 
 ### TurboQuant — defer
 
-[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/) is a 2025 Google Research KV-cache quantization that hits ~3 bits near-losslessly. **Not in llama.cpp master yet** ([issue #20977](https://github.com/ggml-org/llama.cpp/issues/20977)) — only in community forks (e.g. `TheTom/llama-cpp-turboquant` adds `--cache-type-k turbo3`). Skip it until it merges upstream; `q8_0` KV already fits 64K–128K context on a 36 GB Mac.
+[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/) is a 2025 Google Research KV-cache quantization that hits ~3 bits near-losslessly. **Not in llama.cpp master yet** ([issue #20977](https://github.com/ggml-org/llama.cpp/issues/20977)) — only in community forks (e.g. `TheTom/llama-cpp-turboquant` adds `--cache-type-k turbo3`). I'm skipping it until it merges upstream; `q8_0` KV already fits 64K–128K context on my 36 GB Mac.
 
 ---
 
@@ -177,7 +177,7 @@ Output lands at `02YLwsCKUww.diarized.summary.md` next to the input. The script 
 
 ### Why these defaults
 
-Summarization is structural extraction, not reasoning, so we **don't enable Gemma 4's thinking mode** — it would burn tokens planning output the prompt already specifies. Sampling is tuned for faithful extraction:
+Summarization is structural extraction, not reasoning, so I **don't enable Gemma 4's thinking mode** — it would burn tokens planning output the prompt already specifies. Sampling is tuned for faithful extraction:
 
 | param | value | why |
 |---|---|---|
