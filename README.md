@@ -1,11 +1,6 @@
 # summarize-video
 
-Local pipeline that turns a YouTube URL into a speaker-attributed
-transcript and a structured Markdown summary. Built for podcast-style
-discussions — English, or Hindi + English code-switched. Uses `yt-dlp`
-for audio, Whisper for transcription (`mlx-whisper` on Apple Silicon,
-`faster-whisper` on Linux/CUDA), `pyannote.audio` for diarization, and
-`llama.cpp` (Gemma 4 31B) for summarization — all running on-device.
+Local pipeline that turns a YouTube URL into a speaker-attributed transcript and a structured Markdown summary. Built for podcast-style discussions — English, or Hindi + English code-switched. Uses `yt-dlp` for audio, Whisper for transcription (`mlx-whisper` on Apple Silicon, `faster-whisper` on Linux/CUDA), `pyannote.audio` for diarization, and `llama.cpp` (Gemma 4 31B) for summarization — all running on-device.
 
 ## Pipeline
 
@@ -17,9 +12,7 @@ URL ─► download ──┤   (mlx-whisper)  (loops) ├─► merge ─► <i
                        (pyannote)
 ```
 
-Final outputs: `[mm:ss - mm:ss] SPEAKER_xx: utterance` lines plus a
-`<id>.diarized.summary.md` (TL;DR, key points, chapters, takeaways,
-quotes, resources). The summarize step is opt-out via `--no-summarize`.
+Final outputs: `[mm:ss - mm:ss] SPEAKER_xx: utterance` lines plus a `<id>.diarized.summary.md` (TL;DR, key points, chapters, takeaways, quotes, resources). The summarize step is opt-out via `--no-summarize`.
 
 ## Quickstart
 
@@ -63,9 +56,7 @@ LD_LIBRARY_PATH= uv run python summarize_video.py \
   --llama-server-bin ~/llama.cpp/build/bin/llama-server
 ```
 
-The `LD_LIBRARY_PATH=` prefix is only needed if the system has an older
-cuDNN installed (common when a CUDA Toolkit is present) that shadows
-torch's bundled one — drop it otherwise.
+The `LD_LIBRARY_PATH=` prefix is only needed if the system has an older cuDNN installed (common when a CUDA Toolkit is present) that shadows torch's bundled one — drop it otherwise.
 
 ### macOS (Apple Silicon)
 
@@ -86,21 +77,13 @@ Three files land in the current working directory:
 - `<id>.timed.txt` — `[mm:ss - mm:ss] text`
 - `<id>.diarized.txt` — `[mm:ss - mm:ss] SPEAKER_xx: text`
 
-Intermediate artifacts (audio, JSON, 16 kHz wav, pyannote output) live in
-`/tmp/summarize-video-<id>/`, so re-running the same URL skips finished
-steps. Pass `-f` to force a full re-run.
+Intermediate artifacts (audio, JSON, 16 kHz wav, pyannote output) live in `/tmp/summarize-video-<id>/`, so re-running the same URL skips finished steps. Pass `-f` to force a full re-run.
 
 ## Linux / CUDA notes
 
-`uv sync` on Linux pulls `faster-whisper` and a `torch+cu128` wheel
-(instead of `mlx-whisper`). This targets driver R570+ (CUDA 12.8). If you
-have R580+ you can drop to the default cu130 wheel by removing the
-`[tool.uv.sources]` block in `pyproject.toml`.
+`uv sync` on Linux pulls `faster-whisper` and a `torch+cu128` wheel (instead of `mlx-whisper`). This targets driver R570+ (CUDA 12.8). If you have R580+ you can drop to the default cu130 wheel by removing the `[tool.uv.sources]` block in `pyproject.toml`.
 
-If the system has cuDNN installed (e.g. from the CUDA Toolkit) and it's
-older than torch's bundled one, pyannote will crash with
-`RuntimeError: cuDNN version incompatibility`. Clear `LD_LIBRARY_PATH`
-for the run so torch finds its own:
+If the system has cuDNN installed (e.g. from the CUDA Toolkit) and it's older than torch's bundled one, pyannote will crash with `RuntimeError: cuDNN version incompatibility`. Clear `LD_LIBRARY_PATH` for the run so torch finds its own:
 
 ```bash
 LD_LIBRARY_PATH= uv run python summarize_video.py "<URL>" -l en
@@ -108,8 +91,7 @@ LD_LIBRARY_PATH= uv run python summarize_video.py "<URL>" -l en
 
 ## "Sign in to confirm you're not a bot"
 
-YouTube now gates some videos behind a bot-check. If the download step
-fails with that message, hand yt-dlp a browser session's cookies:
+YouTube now gates some videos behind a bot-check. If the download step fails with that message, hand yt-dlp a browser session's cookies:
 
 ```bash
 # Use whichever browser you're signed in to YouTube on
@@ -120,9 +102,7 @@ uv run python summarize_video.py "<URL>" -l en --cookies-from-browser chrome
 uv run python summarize_video.py "<URL>" -l en --cookies ~/cookies.txt
 ```
 
-On Linux, Chrome/Brave encrypt their cookie jar against the system
-keyring (gnome-keyring / kwallet); if yt-dlp can't unlock it, use Firefox
-(plaintext SQLite) or export a cookies file via a browser extension.
+On Linux, Chrome/Brave encrypt their cookie jar against the system keyring (gnome-keyring / kwallet); if yt-dlp can't unlock it, use Firefox (plaintext SQLite) or export a cookies file via a browser extension.
 
 ## More run examples
 
@@ -145,9 +125,7 @@ uv run python summarize_video.py "<URL>" -l en -o ~/Documents/transcripts/
 uv run python summarize_video.py "<URL>" -l en -f
 ```
 
-The pipeline prints a summary at the end with the work-dir path, steps run
-vs cached, language, word/segment/speaker counts, and the final output
-paths.
+The pipeline prints a summary at the end with the work-dir path, steps run vs cached, language, word/segment/speaker counts, and the final output paths.
 
 ### Important params
 
@@ -167,9 +145,7 @@ paths.
 | `--llama-server-bin PATH` | `llama-server` binary. Default `llama-server` (PATH lookup); pass an absolute path otherwise. |
 | `--summarize-server-url URL` | If a server is already running at this URL, reuse it instead of spawning. |
 
-Reference test clip:
-[`HeAGWTgi4sU`](https://www.youtube.com/watch?v=HeAGWTgi4sU) (~8 min,
-Hindi-English).
+Reference test clip: [`HeAGWTgi4sU`](https://www.youtube.com/watch?v=HeAGWTgi4sU) (~8 min, Hindi-English).
 
 ## Run individual steps
 
@@ -183,14 +159,11 @@ uv run python -m steps.diarize    downloads/<id>.m4a
 uv run python -m steps.merge      downloads/<id>.m4a
 ```
 
-See [`docs/pipeline.md`](docs/pipeline.md) for what each step does, the
-file formats it reads/writes, and the full flag list.
+See [`docs/pipeline.md`](docs/pipeline.md) for what each step does, the file formats it reads/writes, and the full flag list.
 
 ## Summarize a transcript standalone
 
-Step 6 runs as part of the orchestrator by default. If you already have a
-transcript and just want to (re-)summarize it without re-running
-download/transcribe/diarize, call the step directly:
+Step 6 runs as part of the orchestrator by default. If you already have a transcript and just want to (re-)summarize it without re-running download/transcribe/diarize, call the step directly:
 
 ```bash
 # Auto-spawn llama-server (left running for re-use):
@@ -202,10 +175,7 @@ uv run python -m steps.summarize <id>.diarized.txt --auto-start \
 uv run python -m steps.summarize --stop-server
 ```
 
-Or start `llama-server` manually (recipe in
-[`docs/summarize.md`](docs/summarize.md)) and call without `--auto-start`.
-Output sections: TL;DR, Key points, Chapters (with timestamps), Main
-takeaways, Important quotes, Resources.
+Or start `llama-server` manually (recipe in [`docs/summarize.md`](docs/summarize.md)) and call without `--auto-start`. Output sections: TL;DR, Key points, Chapters (with timestamps), Main takeaways, Important quotes, Resources.
 
 ## Repo structure
 
@@ -229,12 +199,8 @@ downloads/                # default sink for `python -m steps.*` (gitignored).
 
 ## TODO
 
-- **wav2vec2 forced alignment** — replace Whisper's DTW word timestamps
-  with phoneme-level alignment to fix word-leakage at speaker turn changes.
-- **Speaker name attribution** — map `SPEAKER_00` / `SPEAKER_01` / … to
-  actual names.
-- **`no_repeat_ngram_size` on the faster backend** — CTranslate2 exposes
-  it; wiring it through would prevent repetition loops at decode time
-  rather than after the fact in `dedupe.py`.
+- **wav2vec2 forced alignment** — replace Whisper's DTW word timestamps with phoneme-level alignment to fix word-leakage at speaker turn changes.
+- **Speaker name attribution** — map `SPEAKER_00` / `SPEAKER_01` / … to actual names.
+- **`no_repeat_ngram_size` on the faster backend** — CTranslate2 exposes it; wiring it through would prevent repetition loops at decode time rather than after the fact in `dedupe.py`.
 
 Details for each in [`docs/pipeline.md`](docs/pipeline.md#todos).

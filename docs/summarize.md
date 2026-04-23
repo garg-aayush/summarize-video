@@ -20,8 +20,7 @@ Less memory means a smaller quant or smaller model.
 brew install llama.cpp
 ```
 
-Pre-built binary, Metal already enabled. From source if you want the
-latest commits:
+Pre-built binary, Metal already enabled. From source if you want the latest commits:
 
 ```bash
 brew install cmake
@@ -33,8 +32,7 @@ cmake --build build --config Release -j$(sysctl -n hw.logicalcpu)
 
 ### Linux (CUDA)
 
-No pre-built `llama-server` with CUDA in the standard apt repos; build
-from source:
+No pre-built `llama-server` with CUDA in the standard apt repos; build from source:
 
 ```bash
 sudo apt install cmake build-essential libcurl4-openssl-dev
@@ -47,14 +45,11 @@ cmake --build build --config Release -j$(nproc)
 ln -sf "$PWD/build/bin/llama-server" ~/.local/bin/llama-server
 ```
 
-Requires the CUDA toolkit (`nvcc`) to match your driver. A driver at
-R570 (CUDA 12.8) builds fine against CUDA 12.8 or 12.x toolkits.
+Requires the CUDA toolkit (`nvcc`) to match your driver. A driver at R570 (CUDA 12.8) builds fine against CUDA 12.8 or 12.x toolkits.
 
 ## 2. Download the model
 
-Unsloth's dynamic quant `UD-Q4_K_XL` is the best size/quality tradeoff —
-~500 MB larger than `Q4_K_M` but measurably higher quality because it
-keeps attention layers at higher precision.
+Unsloth's dynamic quant `UD-Q4_K_XL` is the best size/quality tradeoff — ~500 MB larger than `Q4_K_M` but measurably higher quality because it keeps attention layers at higher precision.
 
 ```bash
 # Install the HF CLI as a standalone uv tool (doesn't touch the project venv).
@@ -68,9 +63,7 @@ hf download unsloth/gemma-4-31B-it-GGUF \
   --local-dir ~/models/gemma-4-31b
 ```
 
-> **Note:** the old `huggingface-cli download` command is deprecated in favor
-> of `hf download`. Likewise, `hf_transfer` (the old fast-download accelerator)
-> is deprecated — `hf_xet` replaces it and ships in `huggingface_hub ≥ 0.32`.
+> **Note:** the old `huggingface-cli download` command is deprecated in favor of `hf download`. Likewise, `hf_transfer` (the old fast-download accelerator) is deprecated — `hf_xet` replaces it and ships in `huggingface_hub ≥ 0.32`.
 
 Other quant options:
 
@@ -119,32 +112,18 @@ Flags:
 | `--jinja` | Use the model's embedded chat template. Required for Gemma 4. |
 | `--host 127.0.0.1 --port 8080` | Bind to localhost only. |
 
-On a 4090 (24 GB VRAM) at `--ubatch-size 1024`: 18.8 GB model + ~3 GB
-q8 KV + ~2 GB activations ≈ 24 GB — uses essentially the whole card.
-This is also why the orchestrator (`summarize_video.py`) frees
-whisper/pyannote GPU memory before spawning llama-server: anything else
-holding VRAM at that point will push you into OOM.
+On a 4090 (24 GB VRAM) at `--ubatch-size 1024`: 18.8 GB model + ~3 GB q8 KV + ~2 GB activations ≈ 24 GB — uses essentially the whole card. This is also why the orchestrator (`summarize_video.py`) frees whisper/pyannote GPU memory before spawning llama-server: anything else holding VRAM at that point will push you into OOM.
 
 ### Why these flags help summarization specifically
 
-Summarization is **prefill-bound**: a one-hour video can be 30K–60K
-input tokens but the summary is only ~1–2K output tokens, so we spend most
-of the wall-clock time digesting the input before generating anything.
+Summarization is **prefill-bound**: a one-hour video can be 30K–60K input tokens but the summary is only ~1–2K output tokens, so we spend most of the wall-clock time digesting the input before generating anything.
 
-The main lever is `--ubatch-size` (the size of the chunk of tokens
-processed in a single Metal kernel call). The default 512 is conservative
-for memory-tight setups; bumping to **1024** roughly halves prefill time
-on Apple Silicon at the cost of ~1 GB extra activation memory during
-prefill. **2048** roughly halves it again if you have room (model 18.8 GB
-+ KV ~3 GB + ~2 GB activations + ~7 GB OS still fits in 36 GB, but it's
-tighter — watch Activity Monitor).
+The main lever is `--ubatch-size` (the size of the chunk of tokens processed in a single Metal kernel call). The default 512 is conservative for memory-tight setups; bumping to **1024** roughly halves prefill time on Apple Silicon at the cost of ~1 GB extra activation memory during prefill. **2048** roughly halves it again if you have room (model 18.8 GB + KV ~3 GB + ~2 GB activations + ~7 GB OS still fits in 36 GB, but it's tighter — watch Activity Monitor).
 
-`--batch-size 2048` just makes sure the logical batch isn't smaller than
-the micro-batch (otherwise it caps you at the smaller value).
+`--batch-size 2048` just makes sure the logical batch isn't smaller than the micro-batch (otherwise it caps you at the smaller value).
 
 
-The server exposes an **OpenAI-compatible** API at
-`http://127.0.0.1:8080/v1/chat/completions`. Sanity check:
+The server exposes an **OpenAI-compatible** API at `http://127.0.0.1:8080/v1/chat/completions`. Sanity check:
 
 ```bash
 curl http://127.0.0.1:8080/v1/models
@@ -152,13 +131,7 @@ curl http://127.0.0.1:8080/v1/models
 
 ### TurboQuant — defer
 
-[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/)
-is a 2025 Google Research KV-cache quantization that hits ~3 bits
-near-losslessly. **Not in llama.cpp master yet**
-([issue #20977](https://github.com/ggml-org/llama.cpp/issues/20977)) —
-only in community forks (e.g. `TheTom/llama-cpp-turboquant` adds
-`--cache-type-k turbo3`). Skip it until it merges upstream; `q8_0` KV
-already fits 64K–128K context on a 36 GB Mac.
+[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/) is a 2025 Google Research KV-cache quantization that hits ~3 bits near-losslessly. **Not in llama.cpp master yet** ([issue #20977](https://github.com/ggml-org/llama.cpp/issues/20977)) — only in community forks (e.g. `TheTom/llama-cpp-turboquant` adds `--cache-type-k turbo3`). Skip it until it merges upstream; `q8_0` KV already fits 64K–128K context on a 36 GB Mac.
 
 ---
 
@@ -184,14 +157,9 @@ uv run python -m steps.summarize HeAGWTgi4sU.diarized.txt --auto-start
 uv run python -m steps.summarize --stop-server
 ```
 
-`--auto-start` only spawns a server if one isn't already reachable on
-`--server-url`. If you started the server manually, it's reused as-is.
-The auto-started PID is tracked in `/tmp/summarize-video-llama-server.pid`
-and its log streams to `/tmp/summarize-video-llama-server.log`.
+`--auto-start` only spawns a server if one isn't already reachable on `--server-url`. If you started the server manually, it's reused as-is. The auto-started PID is tracked in `/tmp/summarize-video-llama-server.pid` and its log streams to `/tmp/summarize-video-llama-server.log`.
 
-Output lands at `02YLwsCKUww.diarized.summary.md` next to the input. The
-script prefers `.diarized.txt` (speaker-attributed) but works on plain
-`.timed.txt` too.
+Output lands at `02YLwsCKUww.diarized.summary.md` next to the input. The script prefers `.diarized.txt` (speaker-attributed) but works on plain `.timed.txt` too.
 
 ### Flags
 
@@ -209,9 +177,7 @@ script prefers `.diarized.txt` (speaker-attributed) but works on plain
 
 ### Why these defaults
 
-Summarization is structural extraction, not reasoning, so we **don't enable
-Gemma 4's thinking mode** — it would burn tokens planning output the prompt
-already specifies. Sampling is tuned for faithful extraction:
+Summarization is structural extraction, not reasoning, so we **don't enable Gemma 4's thinking mode** — it would burn tokens planning output the prompt already specifies. Sampling is tuned for faithful extraction:
 
 | param | value | why |
 |---|---|---|
@@ -221,14 +187,9 @@ already specifies. Sampling is tuned for faithful extraction:
 | `min_p` | 0.05 | Trims tail noise that slips past top-p at low temperatures. |
 | `repeat_penalty` | 1.0 (off) | Gemma is sensitive to penalties >1.0; the XML scaffold legitimately repeats tags. |
 
-If a particularly dense or technical video comes back with shallow
-chapters or missed arguments, **then** consider enabling thinking mode (by
-prepending `<|think|>` in a custom system prompt). For everyday podcast
-discussions the defaults above are sufficient.
+If a particularly dense or technical video comes back with shallow chapters or missed arguments, **then** consider enabling thinking mode (by prepending `<|think|>` in a custom system prompt). For everyday podcast discussions the defaults above are sufficient.
 
-If parsing the model's `<summary>` XML fails, the raw response is saved
-as `<input>.summary.raw.txt` so you can debug the prompt or inspect
-output yourself.
+If parsing the model's `<summary>` XML fails, the raw response is saved as `<input>.summary.raw.txt` so you can debug the prompt or inspect output yourself.
 
 ## What's in a summary
 
