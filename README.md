@@ -89,6 +89,24 @@ for the run so torch finds its own:
 LD_LIBRARY_PATH= uv run python summarize_video.py "<URL>" -l en
 ```
 
+## "Sign in to confirm you're not a bot"
+
+YouTube now gates some videos behind a bot-check. If the download step
+fails with that message, hand yt-dlp a browser session's cookies:
+
+```bash
+# Use whichever browser you're signed in to YouTube on
+uv run python summarize_video.py "<URL>" -l en --cookies-from-browser chrome
+# alternatives: firefox, brave, edge, safari
+
+# Or pass an exported Netscape-format cookie file:
+uv run python summarize_video.py "<URL>" -l en --cookies ~/cookies.txt
+```
+
+On Linux, Chrome/Brave encrypt their cookie jar against the system
+keyring (gnome-keyring / kwallet); if yt-dlp can't unlock it, use Firefox
+(plaintext SQLite) or export a cookies file via a browser extension.
+
 ## More run examples
 
 ```bash

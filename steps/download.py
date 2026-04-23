@@ -6,7 +6,12 @@ import yt_dlp
 DOWNLOADS_DIR = Path("downloads")
 
 
-def download_audio(url: str, output_dir: Path = DOWNLOADS_DIR) -> Path:
+def download_audio(
+    url: str,
+    output_dir: Path = DOWNLOADS_DIR,
+    cookies_from_browser: str | None = None,
+    cookiefile: Path | None = None,
+) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     outtmpl = str(output_dir / "%(id)s.%(ext)s")
 
@@ -37,6 +42,18 @@ def download_audio(url: str, output_dir: Path = DOWNLOADS_DIR) -> Path:
         "nocheckcertificate": True,
     }
 
+    # Cookies: YouTube's bot-detection nudges ("Sign in to confirm you're
+    # not a bot") are cleared by presenting a signed-in session's cookies.
+    # Prefer --cookies-from-browser (reads the browser's cookie jar live);
+    # fall back to --cookies if the user exported a Netscape jar.
+    if cookies_from_browser:
+        # yt-dlp accepts a tuple: (browser, profile?, keyring?, container?).
+        # For simplicity expose just the browser name here — power users can
+        # edit in-place if they need a specific profile.
+        ydl_opts["cookiesfrombrowser"] = (cookies_from_browser,)
+    if cookiefile:
+        ydl_opts["cookiefile"] = str(cookiefile)
+
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
 
@@ -50,10 +67,24 @@ def main() -> None:
         "-o", "--output-dir", type=Path, default=DOWNLOADS_DIR,
         help=f"Directory to write the audio file (default: {DOWNLOADS_DIR})",
     )
+    parser.add_argument(
+        "--cookies-from-browser", default=None,
+        help=("Pull cookies from a local browser (e.g. 'firefox', 'chrome', "
+              "'brave', 'edge', 'safari'). Use when YouTube asks to "
+              "'Sign in to confirm you're not a bot'."),
+    )
+    parser.add_argument(
+        "--cookies", type=Path, default=None,
+        help="Path to an exported Netscape-format cookies file.",
+    )
     args = parser.parse_args()
 
     print(f"Downloading audio from: {args.url}")
-    audio_path = download_audio(args.url, args.output_dir)
+    audio_path = download_audio(
+        args.url, args.output_dir,
+        cookies_from_browser=args.cookies_from_browser,
+        cookiefile=args.cookies,
+    )
     print(f"Saved audio to: {audio_path}")
 
 

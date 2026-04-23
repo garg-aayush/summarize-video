@@ -47,6 +47,21 @@ If those break in the future, probe available clients with:
 uv run yt-dlp --extractor-args "youtube:player_client=tv_simply,web_embedded,android_vr" -F "<URL>"
 ```
 
+### Bot-check on some videos
+
+YouTube sometimes nudges `yt-dlp` with "Sign in to confirm you're not a
+bot" on specific videos. Supplying a signed-in session's cookies clears
+it. Two flags, passed through from the orchestrator:
+
+- `--cookies-from-browser <name>` — pulls cookies live from a local
+  browser. Names: `firefox`, `chrome`, `brave`, `edge`, `safari`.
+- `--cookies <path>` — Netscape-format cookie file (use a browser
+  extension to export one).
+
+Both flags are forwarded to the lightweight `_resolve_video_id` call at
+the top of the orchestrator *and* to the full download, so the bot
+check can't slip through on the resolve step.
+
 ---
 
 ## Step 2 — Transcribe (`steps/transcribe.py`)

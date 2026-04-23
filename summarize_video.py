@@ -51,10 +51,37 @@ def _fmt_ts(seconds: float) -> str:
     return f"{int(m):02d}:{s:05.2f}"
 
 
-def _resolve_video_id(url: str) -> str:
+def _resolve_video_id(
+    url: str,
+    cookies_from_browser: str | None = None,
+    cookiefile: Path | None = None,
+) -> str:
     """Ask yt-dlp for the URL's id without downloading audio.
-    Lets us pick a stable per-URL work dir before step 1 actually runs."""
-    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "no_warnings": True}) as ydl:
+    Lets us pick a stable per-URL work dir before step 1 actually runs.
+
+    Uses the same extractor_args and UA as the download step so this
+    resolve call doesn't trip YouTube's bot check with the default client
+    (which happens even when cookies are supplied, because the default
+    `web`/`mweb` clients are the ones currently gated)."""
+    opts: dict = {
+        "quiet": True,
+        "skip_download": True,
+        "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": ["web_embedded", "android_vr"]}},
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+        },
+        "nocheckcertificate": True,
+    }
+    if cookies_from_browser:
+        opts["cookiesfrombrowser"] = (cookies_from_browser,)
+    if cookiefile:
+        opts["cookiefile"] = str(cookiefile)
+    with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
     return info["id"]
 
@@ -82,9 +109,11 @@ def run(
     force: bool,
     backend: str | None = None,
     compute_type: str = "float16",
+    cookies_from_browser: str | None = None,
+    cookiefile: Path | None = None,
 ) -> None:
     print(f"Resolving {url}")
-    video_id = _resolve_video_id(url)
+    video_id = _resolve_video_id(url, cookies_from_browser, cookiefile)
     work_dir = Path(tempfile.gettempdir()) / f"summarize-video-{video_id}"
     work_dir.mkdir(parents=True, exist_ok=True)
     print(f"Work dir: {work_dir}")
@@ -108,7 +137,11 @@ def run(
         steps_cached.append("download")
         print(f"  cached: {audio_path}")
     else:
-        audio_path = download_step.download_audio(url, work_dir)
+        audio_path = download_step.download_audio(
+            url, work_dir,
+            cookies_from_browser=cookies_from_browser,
+            cookiefile=cookiefile,
+        )
         steps_run.append("download")
         print(f"  -> {audio_path}")
     _done(t0)
@@ -261,6 +294,16 @@ def main() -> None:
                         help="Skip diarization (steps 4 + 5). Output is plain + timed text only.")
     parser.add_argument("-f", "--force", action="store_true",
                         help="Re-run every step even if cached outputs exist.")
+    parser.add_argument(
+        "--cookies-from-browser", default=None,
+        help=("Pull cookies from a local browser (e.g. 'firefox', 'chrome', "
+              "'brave', 'edge', 'safari') for yt-dlp. Use when YouTube asks "
+              "to 'Sign in to confirm you're not a bot'."),
+    )
+    parser.add_argument(
+        "--cookies", type=Path, default=None,
+        help="Path to an exported Netscape-format cookies file for yt-dlp.",
+    )
     args = parser.parse_args()
 
     run(
@@ -277,6 +320,8 @@ def main() -> None:
         force=args.force,
         backend=args.backend,
         compute_type=args.compute_type,
+        cookies_from_browser=args.cookies_from_browser,
+        cookiefile=args.cookies,
     )
 
 
