@@ -72,40 +72,60 @@ def _print_loaded_models(server_url: str) -> None:
         print(f"Loaded model(s): {', '.join(models)}")
 
 
+def _pick_ubatch_and_ctx() -> tuple[str, str]:
+    """Pick (--ubatch-size, -c) based on available VRAM.
+
+    24 GB CUDA cards (4090 / 3090) in the orchestrator flow: 512 / 48K.
+      Going to ubatch 512 trades ~2x prefill speed for ~1 GB of freed
+      activation memory, which we spend on context. 48K fits with
+      ~0.5 GB of headroom after the ~1.2 GB CUDA-context shadow the
+      orchestrator process can't release.
+
+    Larger CUDA cards (A6000, H100) and Apple Silicon: 1024 / 64K.
+      More memory headroom means we can keep the faster prefill and
+      a bigger context. Macs see ~2x prefill speedup from 512 → 1024.
+    """
+    try:
+        import torch
+        if torch.cuda.is_available():
+            total_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+            if total_gb < 32:
+                return "512", "49152"
+    except ImportError:
+        pass
+    return "1024", "65536"
+
+
 def _build_server_cmd(model: Path, host: str, port: int, server_bin: str = DEFAULT_SERVER_BIN) -> list[str]:
     """Default llama-server command tuned for Gemma 4 31B.
 
     Summarization is prefill-bound (huge input, small output), so the main
-    levers are `--ubatch-size` (GPU kernel batch — 2x default of 512) and
-    `--batch-size` (logical prefill batch). KV-cache quantization halves
-    the cache memory; flash-attn is required to use a quantized cache.
+    levers are `--ubatch-size` (GPU kernel batch) and `--batch-size`
+    (logical prefill batch). KV-cache quantization halves the cache memory;
+    flash-attn is required to use a quantized cache.
 
-    `--ubatch-size 1024` works on both 24 GB CUDA cards (RTX 4090) and
-    36 GB Macs. Going higher (2048) buys ~2x prefill speed but pushes
-    activation memory to ~4 GB which OOMs the 4090
-    (19 GB weights + 3 GB q8 KV + 4 GB activations > 24 GB). On bigger
-    cards (e.g. A6000 48 GB) push it via --server-cmd.
-
-    `-c 32768` rather than 65536 because the orchestrator's own CUDA
-    context (torch + CT2 + pyannote) keeps ~1.2 GB reserved even after
-    empty_cache — that shadow leaves only ~23 GB visible to llama-server,
-    which 65K projects over. 32K fits with ~1.5 GB of headroom, and is
-    still plenty: a 2-hour transcript is ~15K tokens. Bigger cards or
-    standalone llama-server runs can bump it via --server-cmd.
+    ubatch / ctx defaults are picked by `_pick_ubatch_and_ctx()` based on
+    detected VRAM. On 4090-class cards the orchestrator flow keeps ~1.2 GB
+    of CUDA context reserved (torch + CT2 + pyannote) that `empty_cache`
+    can't free, so we drop ubatch to 512 to claw back ~1 GB of activation
+    headroom and spend it on 48K context. Larger cards and Macs get the
+    faster 1024 / 64K recipe. Any of these can be overridden with
+    --server-cmd.
 
     Mirrors the recipe in docs/summarize.md.
     """
+    ubatch, ctx = _pick_ubatch_and_ctx()
     return [
         server_bin,
         "-m", str(model),
         "-ngl", "99",
-        "-c", "32768",
+        "-c", ctx,
         "--flash-attn", "on",
         "--cache-type-k", "q8_0",
         "--cache-type-v", "q8_0",
         "--parallel", "1",
         "--batch-size", "2048",
-        "--ubatch-size", "1024",
+        "--ubatch-size", ubatch,
         "--context-shift",
         "--metrics",
         "--jinja",

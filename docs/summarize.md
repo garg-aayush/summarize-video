@@ -101,18 +101,18 @@ Flags:
 | flag | what it does |
 |---|---|
 | `-ngl 99` | Offload all layers to the GPU (Metal on Mac, CUDA on Linux). |
-| `-c 32768` | 32K context — plenty for a 2-hour transcript (~15K tokens). The orchestrator flow keeps ~1.2 GB of CUDA context reserved (torch + CT2 + pyannote) that survives `empty_cache`, so 65K projects over the 24 GB limit on a 4090. Standalone `llama-server` runs, 36 GB Macs, or 48 GB cards can bump higher via `--server-cmd`. |
+| `-c 49152` / `-c 65536` | Context length. The orchestrator picks **48K** on 24 GB CUDA cards (4090 / 3090) and **64K** on Macs or 48 GB+ cards. 2-hour transcripts run ~15K tokens, so either is comfortable. The 4090 value is pinned by ~1.2 GB of orchestrator-held CUDA context that `empty_cache` can't free. Standalone `llama-server` runs aren't affected. |
 | `--flash-attn on` | Flash attention. Required when using a quantized KV cache. |
 | `--cache-type-k q8_0` / `--cache-type-v q8_0` | 8-bit KV cache. Halves its memory, near-lossless quality. |
 | `--parallel 1` | One concurrent slot. I'm not multiplexing requests. |
 | `--batch-size 2048` | Tokens per logical prefill batch. |
-| `--ubatch-size 1024` | Tokens per GPU kernel call. **The main prefill-speed knob** — 2× the default 512. Going higher (2048) buys ~2× prefill speed but adds ~4 GB activations, which OOMs the 4090 (19 GB weights + 3 GB q8 KV + 4 GB activations > 24 GB). On 48 GB+ cards (A6000, H100) push it via `--server-cmd`. |
+| `--ubatch-size 512` / `--ubatch-size 1024` | Tokens per GPU kernel call. **The main prefill-speed knob.** The orchestrator picks **512** on 24 GB CUDA cards (to free ~1 GB of activations for the 48K KV cache) and **1024** on Macs / 48 GB+ cards. Going 1024 → 2048 halves prefill again if you have ~4 GB of activation headroom (A6000, H100); push via `--server-cmd`. |
 | `--context-shift` | Slide the window when input exceeds context, instead of failing. |
 | `--metrics` | Expose Prometheus-style stats at `/metrics` for tuning. |
 | `--jinja` | Use the model's embedded chat template. Required for Gemma 4. |
 | `--host 127.0.0.1 --port 8080` | Bind to localhost only. |
 
-On a 4090 (24 GB VRAM) at `--ubatch-size 1024`, `-c 32768`: 18.8 GB model + ~1.5 GB q8 KV + ~2 GB activations ≈ 22 GB, leaving ~2 GB of headroom. That headroom matters because the orchestrator (`summarize_video.py`) keeps ~1.2 GB of CUDA context reserved (torch + CT2 + pyannote) that `empty_cache` can't release while the Python process is alive — standalone `llama-server` runs without that shadow and can comfortably do 65K on the same card.
+On a 4090 (24 GB VRAM) at `--ubatch-size 512`, `-c 49152`: 18.8 GB model + ~2.3 GB q8 KV + ~1 GB activations ≈ 22 GB, leaving ~2 GB of headroom. That headroom matters because the orchestrator (`summarize_video.py`) keeps ~1.2 GB of CUDA context reserved (torch + CT2 + pyannote) that `empty_cache` can't release while the Python process is alive. Trading ubatch 1024 → 512 roughly doubles prefill wall-time on the summarize step but unlocks 48K context instead of 32K on the same card. Standalone `llama-server` runs aren't subject to the shadow and can keep ubatch 1024 + 64K.
 
 ### Why these flags help summarization specifically
 
