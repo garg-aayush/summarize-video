@@ -83,7 +83,7 @@ Source: [unsloth/gemma-4-31B-it-GGUF](https://huggingface.co/unsloth/gemma-4-31B
 llama-server \
   -m ~/models/gemma-4-31b/gemma-4-31B-it-UD-Q4_K_XL.gguf \
   -ngl 99 \
-  -c 65536 \
+  -c 32768 \
   -fa on \
   --cache-type-k q8_0 \
   --cache-type-v q8_0 \
@@ -101,7 +101,7 @@ Flags:
 | flag | what it does |
 |---|---|
 | `-ngl 99` | Offload all layers to the GPU (Metal on Mac, CUDA on Linux). |
-| `-c 65536` | 64K context — enough for a ~2-hour video. Push higher (128K, 256K) if you need it. |
+| `-c 32768` | 32K context — plenty for a 2-hour transcript (~15K tokens). Fits the 4090 cleanly alongside the ubatch-1024 activation buffer; 65K lands within ~500 MB of the 24 GB limit and OOMs with any residual fragmentation after pyannote. On 36 GB Macs or 48 GB cards push higher via `--server-cmd`. |
 | `--flash-attn on` | Flash attention. Required when using a quantized KV cache. |
 | `--cache-type-k q8_0` / `--cache-type-v q8_0` | 8-bit KV cache. Halves its memory, near-lossless quality. |
 | `--parallel 1` | One concurrent slot. I'm not multiplexing requests. |
@@ -112,7 +112,7 @@ Flags:
 | `--jinja` | Use the model's embedded chat template. Required for Gemma 4. |
 | `--host 127.0.0.1 --port 8080` | Bind to localhost only. |
 
-On a 4090 (24 GB VRAM) at `--ubatch-size 1024`: 18.8 GB model + ~3 GB q8 KV + ~2 GB activations ≈ 24 GB — uses essentially the whole card. This is also why the orchestrator (`summarize_video.py`) frees whisper/pyannote GPU memory before spawning llama-server: anything else holding VRAM at that point will push you into OOM.
+On a 4090 (24 GB VRAM) at `--ubatch-size 1024`, `-c 32768`: 18.8 GB model + ~1.5 GB q8 KV + ~2 GB activations ≈ 22 GB, leaving ~2 GB of headroom. This is also why the orchestrator (`summarize_video.py`) frees whisper/pyannote GPU memory before spawning llama-server: even with 32K, running concurrently with other GPU work OOMs.
 
 ### Why these flags help summarization specifically
 

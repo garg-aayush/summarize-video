@@ -86,13 +86,19 @@ def _build_server_cmd(model: Path, host: str, port: int, server_bin: str = DEFAU
     (19 GB weights + 3 GB q8 KV + 4 GB activations > 24 GB). On bigger
     cards (e.g. A6000 48 GB) push it via --server-cmd.
 
+    `-c 32768` (32K) fits the 4090 cleanly alongside the ubatch 1024
+    activation buffer; 65K would land within ~500 MB of the 24 GB limit
+    and OOM with any residual allocator fragmentation after pyannote.
+    32K is plenty — even a 2-hour transcript is ~15K tokens. Larger
+    context is available via --server-cmd on higher-VRAM cards.
+
     Mirrors the recipe in docs/summarize.md.
     """
     return [
         server_bin,
         "-m", str(model),
         "-ngl", "99",
-        "-c", "65536",
+        "-c", "32768",
         "--flash-attn", "on",
         "--cache-type-k", "q8_0",
         "--cache-type-v", "q8_0",
