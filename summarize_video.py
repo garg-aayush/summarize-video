@@ -94,13 +94,14 @@ def _fmt_ts(seconds: float) -> str:
     return f"{int(m):02d}:{s:05.2f}"
 
 
-def _resolve_video_id(
+def _resolve_video_info(
     url: str,
     cookies_from_browser: str | None = None,
     cookiefile: Path | None = None,
-) -> str:
-    """Ask yt-dlp for the URL's id without downloading audio.
-    Lets us pick a stable per-URL work dir before step 1 actually runs.
+) -> tuple[str, str]:
+    """Ask yt-dlp for the URL's id and description without downloading audio.
+    Lets us pick a stable per-URL work dir before step 1 actually runs and
+    captures the description for the episode-context extraction at step 6.
 
     Uses the same extractor_args and UA as the download step so this
     resolve call doesn't trip YouTube's bot check with the default client
@@ -126,7 +127,7 @@ def _resolve_video_id(
         opts["cookiefile"] = str(cookiefile)
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
-    return info["id"]
+    return info["id"], info.get("description") or ""
 
 
 def _write_timed_text(transcript: dict, path: Path) -> None:
@@ -159,6 +160,7 @@ def run(
     summarize_model: Path = summarize_step.DEFAULT_MODEL,
     llama_server_bin: str = summarize_step.DEFAULT_SERVER_BIN,
     summarize_server_wait_timeout: int = 180,
+    episode_context: bool = True,
 ) -> None:
     # Pre-flight: if we'll need to spawn llama-server later, fail now if the
     # binary or model doesn't exist — better than running 10 min of pipeline
@@ -181,7 +183,7 @@ def run(
             sys.exit(2)
 
     print(f"Resolving {url}")
-    video_id = _resolve_video_id(url, cookies_from_browser, cookiefile)
+    video_id, description = _resolve_video_info(url, cookies_from_browser, cookiefile)
     work_dir = Path(tempfile.gettempdir()) / f"summarize-video-{video_id}"
     work_dir.mkdir(parents=True, exist_ok=True)
     print(f"Work dir: {work_dir}")
@@ -194,6 +196,11 @@ def run(
     diarization_path = audio_path.with_suffix(".diarization.json")
     diarized_txt = audio_path.with_suffix(".diarized.txt")
     diarized_json = audio_path.with_suffix(".diarized.json")
+    description_path = audio_path.with_suffix(".description.txt")
+    episode_context_path = audio_path.with_suffix(".episode_context.md")
+
+    description_path.write_text(description)
+    print(f"  description: {len(description)} chars -> {description_path.name}")
 
     steps_run: list[str] = []
     steps_cached: list[str] = []
@@ -325,11 +332,31 @@ def run(
                         server_bin=llama_server_bin,
                     )
                     spawned_here = True
+
+                context_text: str | None = None
+                if not episode_context:
+                    print("  episode-context extraction skipped (--no-episode-context)")
+                elif not description.strip():
+                    print("  no description from yt-dlp; skipping episode-context extraction")
+                elif episode_context_path.exists() and not force:
+                    context_text = episode_context_path.read_text()
+                    steps_cached.append("episode_context")
+                    print(f"  cached episode context: {episode_context_path.name} ({len(context_text)} chars)")
+                else:
+                    print("  extracting episode context from description...")
+                    context_text = summarize_step.extract_episode_context(
+                        description, server_url=summarize_server_url,
+                    )
+                    episode_context_path.write_text(context_text + "\n")
+                    steps_run.append("episode_context")
+                    print(f"  -> {episode_context_path.name} ({len(context_text)} chars)")
+
                 summarize_step.summarize(
                     summary_input,
                     output=summary_path,
                     server_url=summarize_server_url,
                     auto_start=False,
+                    context=context_text,
                 )
                 steps_run.append("summarize")
                 print(f"  -> {summary_path}")
@@ -368,6 +395,10 @@ def run(
     print(f"Transcript:    {transcript_path}")
     if not no_diarize:
         print(f"Diarization:   {diarization_path}")
+    if description_path.exists() and description_path.stat().st_size > 0:
+        print(f"Description:   {description_path}")
+    if episode_context_path.exists():
+        print(f"Episode ctx:   {episode_context_path}")
     if summary_path is not None:
         print(f"Summary:       {summary_path}")
     print(f"Steps run:     {', '.join(steps_run) or '—'}")
@@ -449,6 +480,13 @@ def main() -> None:
         "--summarize-server-wait-timeout", type=int, default=180,
         help="Seconds to wait for spawned llama-server to be ready (default 180).",
     )
+    parser.add_argument(
+        "--no-episode-context", action="store_true",
+        help="Skip the small LLM call that distills the YouTube description "
+             "into an Episode Context block before the main summary. The "
+             "context block helps the summarizer name speakers and ground "
+             "references; turn it off if the video has no useful description.",
+    )
     args = parser.parse_args()
 
     run(
@@ -472,6 +510,7 @@ def main() -> None:
         summarize_model=args.summarize_model,
         llama_server_bin=args.llama_server_bin,
         summarize_server_wait_timeout=args.summarize_server_wait_timeout,
+        episode_context=not args.no_episode_context,
     )
 
 

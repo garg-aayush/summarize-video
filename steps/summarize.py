@@ -40,6 +40,8 @@ The transcript will be given in either of the following formats:
 
 It will appears inside <transcript> tags.
 
+You may also receive an `<episode_context>` block before the transcript. It contains metadata extracted from the video's description (show, host, guests with roles, themes). When present, use it to attribute SPEAKER_xx labels to real names where you can do so confidently from the transcript content, to identify the show, and to ground references to people, organizations, or events. Never let the context override what the transcript actually says — if they conflict, the transcript wins.
+
 The output should contain the following information:
 - tldr: a short summary of the transcript
 - key points: a list of key points from the transcript
@@ -48,6 +50,41 @@ The output should contain the following information:
 - important quotes: 1–4 verbatim quotes that best capture voice or argument. Attribute the speaker if labels are present. Never paraphrase.
 - resources: Named entities mentioned: people, books, papers, companies, tools, URLs, events. One per bullet, with enough context to identify each.
 </instructions>
+"""
+
+EPISODE_CONTEXT_SYSTEM_PROMPT = """\
+<role>
+You are an information extraction agent that extracts video-specific metadata from a given noisy YouTube description. The output is used as grounding context for a downstream summarizer for the video.
+</role>
+
+<rules>
+- Extract only what the description explicitly states. Never infer or use outside knowledge.
+- Omit any field that is not present. No "N/A" or "unknown."
+- Ignore: subscribe/follow links, social handles, promo and referral codes, sponsor pitches, other-channel cross-promotion, contact emails, generic SEO hashtags.
+- Ignore the channel-level "About" block (usually at the bottom, describing the channel in general). Its themes are not episode themes.
+- Ignore comma-separated SEO keyword dumps. Extract guests and themes only from prose sentences.
+- Prefer full names with stated roles ("Demis Hassabis, CEO of Google DeepMind") over handles.
+- Keep episode titles in their original language. Translate role and affiliation phrases to English.
+- If nothing episode-specific is present, output the fallback.
+</rules>
+
+<output_format>
+Output one Markdown block. Omit any line whose field is missing. No preamble, no code fences.
+
+## Episode Context
+- **Show:**
+- **Title or topic:**
+- **Host:**
+- **Guests:** [one bullet per guest if multiple]
+- **Event or venue:**
+- **Themes promised:**
+- **Language:**
+
+Fallback when nothing episode-specific is extractable:
+
+## Episode Context
+_No episode-specific context available in description._
+</output_format>
 """
 
 
@@ -251,12 +288,14 @@ def _stop_server() -> None:
 
 # --- chat call ---------------------------------------------------------------
 
-def _post_chat(
+def _chat(
     server_url: str,
-    transcript: str,
+    system: str,
+    user: str,
     temperature: float,
     max_tokens: int,
     timeout: int,
+    chat_template_kwargs: dict | None = None,
 ) -> str:
     # Sampling tuned for structured extraction, not reasoning. Top-p / top-k
     # are Google's recommended Gemma defaults; min_p trims tail noise that
@@ -264,8 +303,8 @@ def _post_chat(
     # the XML scaffold legitimately repeats tags.
     payload = {
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"<transcript>\n{transcript}\n</transcript>"},
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
         ],
         "temperature": temperature,
         "top_p": 0.95,
@@ -275,6 +314,8 @@ def _post_chat(
         "max_tokens": max_tokens,
         "stream": False,
     }
+    if chat_template_kwargs:
+        payload["chat_template_kwargs"] = chat_template_kwargs
     req = urllib.request.Request(
         f"{server_url}/v1/chat/completions",
         data=json.dumps(payload).encode(),
@@ -284,6 +325,48 @@ def _post_chat(
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         body = json.loads(resp.read())
     return body["choices"][0]["message"]["content"]
+
+
+def _build_user_message(transcript: str, context: str | None) -> str:
+    if context and context.strip():
+        return (
+            f"<episode_context>\n{context.strip()}\n</episode_context>\n"
+            f"<transcript>\n{transcript}\n</transcript>"
+        )
+    return f"<transcript>\n{transcript}\n</transcript>"
+
+
+def extract_episode_context(
+    description: str,
+    server_url: str = DEFAULT_SERVER,
+    *,
+    temperature: float = 0.1,
+    max_tokens: int = 1024,
+    timeout: int = 300,
+) -> str:
+    """Distill a noisy YouTube description into a structured Episode Context block.
+
+    Caller is responsible for ensuring llama-server is reachable at
+    `server_url`; this function does not spawn one.
+
+    Reasoning is disabled for this call: with `--jinja` Gemma 4's chat
+    template enables thinking by default, and a small structured-output task
+    like this can have its entire `max_tokens` budget consumed by hidden
+    `<think>...</think>` tokens before any visible answer is emitted (see
+    docs/experiments.md "Episode context — Gemma's hidden reasoning ate
+    the extraction budget"). The main `summarize()` call still uses default
+    template behavior.
+    """
+    raw = _chat(
+        server_url,
+        EPISODE_CONTEXT_SYSTEM_PROMPT,
+        f"<description>\n{description}\n</description>",
+        temperature,
+        max_tokens,
+        timeout,
+        chat_template_kwargs={"enable_thinking": False},
+    )
+    return _clean_output(raw)
 
 
 def _clean_output(response: str) -> str:
@@ -310,12 +393,18 @@ def summarize(
     temperature: float = 0.3,
     max_tokens: int = 4096,
     timeout: int = 900,
+    context: str | None = None,
 ) -> Path:
     """Summarize a transcript via llama-server; returns the output path.
 
     If `auto_start` is True (the default when called from the orchestrator),
     spawns `llama-server` if one isn't already reachable at `server_url`.
     The server is left running so subsequent calls are fast.
+
+    `context` is an optional pre-extracted Episode Context block (see
+    `extract_episode_context`); when present it's prepended to the user
+    message inside an `<episode_context>` tag so the model can ground
+    speaker labels and named entities.
     """
     text = Path(transcript).read_text()
     if auto_start:
@@ -325,7 +414,8 @@ def summarize(
             f"Cannot reach llama-server at {server_url}. "
             "Start it manually (see docs/summarize.md), or pass auto_start=True."
         )
-    raw = _post_chat(server_url, text, temperature, max_tokens, timeout)
+    user_message = _build_user_message(text, context)
+    raw = _chat(server_url, SYSTEM_PROMPT, user_message, temperature, max_tokens, timeout)
     out = output or Path(transcript).with_suffix(".summary.md")
     out.write_text(_clean_output(raw) + "\n")
     return out
@@ -348,6 +438,11 @@ def main() -> None:
                         help="Cap on summary length in tokens. Default 4096.")
     parser.add_argument("--timeout", type=int, default=900,
                         help="HTTP timeout in seconds. Default 900 (15 min).")
+    parser.add_argument("--context-file", type=Path, default=None,
+                        help="Optional Episode Context markdown file (see "
+                             "extract_episode_context). Prepended to the "
+                             "transcript so the model can ground speaker labels "
+                             "and named entities.")
 
     server = parser.add_argument_group("server lifecycle")
     server.add_argument("--auto-start", action="store_true",
@@ -376,6 +471,9 @@ def main() -> None:
         parser.error("transcript is required (unless using --stop-server)")
 
     print(f"Transcript: {args.transcript} ({len(args.transcript.read_text()):,} chars)")
+    context = args.context_file.read_text() if args.context_file else None
+    if context:
+        print(f"Context:    {args.context_file} ({len(context):,} chars)")
     print("Generating summary (this can take a few minutes)...")
     output = summarize(
         args.transcript,
@@ -389,6 +487,7 @@ def main() -> None:
         temperature=args.temperature,
         max_tokens=args.max_tokens,
         timeout=args.timeout,
+        context=context,
     )
     _print_loaded_models(args.server_url)
     print(f"Wrote: {output}")
