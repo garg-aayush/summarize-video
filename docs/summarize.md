@@ -113,15 +113,17 @@ Flags:
 | `--cache-type-k q8_0` / `--cache-type-v q8_0` | 8-bit KV cache. Halves its memory, near-lossless quality. |
 | `--parallel 1` | One concurrent slot. We're not multiplexing requests. |
 | `--batch-size 2048` | Tokens per logical prefill batch. |
-| `--ubatch-size 1024` | Tokens per GPU kernel call. **The main prefill-speed knob** — 2× the default 512. Push to 2048 on 24 GB+ GPUs (4090, etc.) where VRAM isn't tight. |
+| `--ubatch-size 1024` | Tokens per GPU kernel call. **The main prefill-speed knob** — 2× the default 512. Going higher (2048) buys ~2× prefill speed but adds ~4 GB activations, which OOMs the 4090 (19 GB weights + 3 GB q8 KV + 4 GB activations > 24 GB). On 48 GB+ cards (A6000, H100) push it via `--server-cmd`. |
 | `--context-shift` | Slide the window when input exceeds context, instead of failing. |
 | `--metrics` | Expose Prometheus-style stats at `/metrics` for tuning. |
 | `--jinja` | Use the model's embedded chat template. Required for Gemma 4. |
 | `--host 127.0.0.1 --port 8080` | Bind to localhost only. |
 
-On a 4090 (24 GB VRAM), the full stack fits comfortably: 18.8 GB model +
-~3 GB q8 KV + ~2 GB activations. Bumping `--ubatch-size` to 2048 is
-safe there; on the 36 GB Mac it's tighter (watch Activity Monitor).
+On a 4090 (24 GB VRAM) at `--ubatch-size 1024`: 18.8 GB model + ~3 GB
+q8 KV + ~2 GB activations ≈ 24 GB — uses essentially the whole card.
+This is also why the orchestrator (`summarize_video.py`) frees
+whisper/pyannote GPU memory before spawning llama-server: anything else
+holding VRAM at that point will push you into OOM.
 
 ### Why these flags help summarization specifically
 

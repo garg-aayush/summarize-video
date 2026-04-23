@@ -1,11 +1,11 @@
 # summarize-video
 
-Local pipeline that turns a YouTube URL into a speaker-attributed transcript
-and (optionally) a structured summary. Built for podcast-style
-discussions — English, or Hindi + English code-switched. Uses `yt-dlp` for
-audio, Whisper for transcription (`mlx-whisper` on Apple Silicon,
-`faster-whisper` on Linux/CUDA), and `pyannote.audio` for diarization —
-all running on-device.
+Local pipeline that turns a YouTube URL into a speaker-attributed
+transcript and a structured Markdown summary. Built for podcast-style
+discussions — English, or Hindi + English code-switched. Uses `yt-dlp`
+for audio, Whisper for transcription (`mlx-whisper` on Apple Silicon,
+`faster-whisper` on Linux/CUDA), `pyannote.audio` for diarization, and
+`llama.cpp` (Gemma 4 31B) for summarization — all running on-device.
 
 ## Pipeline
 
@@ -17,7 +17,9 @@ URL ─► download ──┤   (mlx-whisper)  (loops) ├─► merge ─► <i
                        (pyannote)
 ```
 
-Final output: `[mm:ss - mm:ss] SPEAKER_xx: utterance` lines.
+Final outputs: `[mm:ss - mm:ss] SPEAKER_xx: utterance` lines plus a
+`<id>.diarized.summary.md` (TL;DR, key points, chapters, takeaways,
+quotes, resources). The summarize step is opt-out via `--no-summarize`.
 
 ## Quickstart
 
@@ -41,9 +43,24 @@ uv sync                      # pulls faster-whisper + torch+cu128 (~3-4 GB)
 #      https://huggingface.co/pyannote/speaker-diarization-community-1
 export HF_TOKEN=hf_xxx...
 
-# 4. Transcribe a video (first run downloads ~2 GB of models)
+# 4. Build llama.cpp (CUDA) for the summarize step + download Gemma model
+sudo apt install cmake libcurl4-openssl-dev
+git clone https://github.com/ggml-org/llama.cpp.git ~/llama.cpp
+cmake -S ~/llama.cpp -B ~/llama.cpp/build -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=ON
+cmake --build ~/llama.cpp/build --config Release -j$(nproc)
+
+uv tool install huggingface_hub
+mkdir -p ~/MODELS/unsloth/gemma-4-31B-it-GGUF
+hf download unsloth/gemma-4-31B-it-GGUF gemma-4-31B-it-UD-Q4_K_XL.gguf \
+  --local-dir ~/MODELS/unsloth/gemma-4-31B-it-GGUF
+
+# 5. Transcribe + diarize + summarize a video
+#    First run downloads ~2 GB of whisper/pyannote models.
+#    Step 6 spawns llama-server, runs Gemma, and stops it (~60s overhead +
+#    summarize time). Pass --no-summarize to skip if you only want the transcript.
 LD_LIBRARY_PATH= uv run python summarize_video.py \
-  "https://www.youtube.com/watch?v=HeAGWTgi4sU" -l en
+  "https://www.youtube.com/watch?v=HeAGWTgi4sU" -l en \
+  --llama-server-bin ~/llama.cpp/build/bin/llama-server
 ```
 
 The `LD_LIBRARY_PATH=` prefix is only needed if the system has an older
@@ -145,6 +162,10 @@ paths.
 | `--hallucination-silence-threshold 2.0` | Suppress text generated during silences > N seconds. |
 | `--num-speakers N` / `--min-speakers` / `--max-speakers` | Hint the diarizer when you know the count. |
 | `--compute-type` | CTranslate2 compute type for the `faster` backend. Default `float16`; try `int8_float16` for lower VRAM. |
+| `--no-summarize` | Skip step 6 (Gemma summary). No `llama-server` needed. |
+| `--summarize-model PATH` | GGUF model used for summarization. Default: `~/MODELS/unsloth/gemma-4-31B-it-GGUF/gemma-4-31B-it-UD-Q4_K_XL.gguf`. |
+| `--llama-server-bin PATH` | `llama-server` binary. Default `llama-server` (PATH lookup); pass an absolute path otherwise. |
+| `--summarize-server-url URL` | If a server is already running at this URL, reuse it instead of spawning. |
 
 Reference test clip:
 [`HeAGWTgi4sU`](https://www.youtube.com/watch?v=HeAGWTgi4sU) (~8 min,
@@ -165,37 +186,26 @@ uv run python -m steps.merge      downloads/<id>.m4a
 See [`docs/pipeline.md`](docs/pipeline.md) for what each step does, the
 file formats it reads/writes, and the full flag list.
 
-## Summarize a transcript (optional)
+## Summarize a transcript standalone
 
-Once you have a `.diarized.txt` (or `.timed.txt`), generate a structured
-summary with a local Gemma 4 31B running under `llama.cpp`:
+Step 6 runs as part of the orchestrator by default. If you already have a
+transcript and just want to (re-)summarize it without re-running
+download/transcribe/diarize, call the step directly:
 
 ```bash
-# Easy: have the script start the server itself if it isn't running.
-# Pays a one-time ~30-90s model load on the first call; subsequent calls
-# are seconds. Server stays up between runs.
-uv run python -m steps.summarize <id>.diarized.txt --auto-start
+# Auto-spawn llama-server (left running for re-use):
+uv run python -m steps.summarize <id>.diarized.txt --auto-start \
+  --server-bin ~/llama.cpp/build/bin/llama-server
 # -> <id>.diarized.summary.md
 
-# When you're done:
+# Stop the auto-started server:
 uv run python -m steps.summarize --stop-server
 ```
 
-Or start the server manually (full flag rationale in `docs/summarize.md`)
-and call without `--auto-start`:
-
-```bash
-llama-server -m ~/models/gemma-4-31b/gemma-4-31B-it-UD-Q4_K_XL.gguf \
-  -ngl 99 -c 65536 --flash-attn on \
-  --cache-type-k q8_0 --cache-type-v q8_0 \
-  --parallel 1 --batch-size 2048 --ubatch-size 1024 \
-  --context-shift --metrics --jinja
-uv run python -m steps.summarize <id>.diarized.txt
-```
-
+Or start `llama-server` manually (recipe in
+[`docs/summarize.md`](docs/summarize.md)) and call without `--auto-start`.
 Output sections: TL;DR, Key points, Chapters (with timestamps), Main
-takeaways, Important quotes, Resources. Full setup in
-[`docs/summarize.md`](docs/summarize.md).
+takeaways, Important quotes, Resources.
 
 ## Repo structure
 

@@ -1,29 +1,39 @@
-"""End-to-end pipeline: YouTube URL -> diarized transcript (+ optional summary).
+"""End-to-end pipeline: YouTube URL -> diarized transcript + Gemma summary.
 
 Tuned for podcast-style videos (English or Hindi+English code-switched
-discussions). Runs five steps in order:
+discussions). Six steps:
   1. download   (steps.download.download_audio)
   2. transcribe (steps.transcribe.transcribe)
   3. dedupe     (steps.dedupe.dedupe_transcript)
-  4. diarize    (steps.diarize.diarize)         [skipped with --no-diarize]
-  5. merge      (steps.merge.merge)             [skipped with --no-diarize]
+  4. diarize    (steps.diarize.diarize)              [skipped with --no-diarize]
+  5. merge      (steps.merge.merge)                  [skipped with --no-diarize]
+  6. summarize  (steps.summarize.summarize)          [skipped with --no-summarize]
+
+Step 6 requires a running llama-server. The orchestrator pre-flights the
+server at startup and refuses to run if it's unreachable — start it
+manually (see docs/summarize.md) or pass --no-summarize.
 
 Intermediate files land in a per-URL system temp dir
 (`/tmp/summarize-video-<id>/...`), so re-running the same URL skips
-already-done steps. Final transcripts are copied into the output directory
+already-done steps. Final outputs are copied into the output directory
 (default: current working directory).
 
-Always-produced final outputs:
+Always produced:
   <id>.txt         plain deduped text
   <id>.timed.txt   `[mm:ss - mm:ss] text` per segment
 
-With diarization (default):
+With diarization:
   <id>.diarized.txt   `[mm:ss - mm:ss] SPEAKER_xx: text`
+
+With summarization:
+  <id>.diarized.summary.md  (or <id>.timed.summary.md under --no-diarize)
 """
 
 import argparse
+import gc
 import json
 import shutil
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -35,6 +45,7 @@ from steps import transcribe as transcribe_step
 from steps import dedupe as dedupe_step
 from steps import diarize as diarize_step
 from steps import merge as merge_step
+from steps import summarize as summarize_step
 
 
 def _step(name: str):
@@ -44,6 +55,21 @@ def _step(name: str):
 
 def _done(t0: float) -> None:
     print(f"  ({time.perf_counter() - t0:.1f}s)")
+
+
+def _free_gpu() -> None:
+    """Release whisper/pyannote GPU references so llama-server has the
+    full card to itself. Gemma 4 31B Q4_K_XL needs ~22 GB on a 24 GB
+    card — anything else holding VRAM (cached PyTorch blocks, lingering
+    CT2 contexts) will OOM the model load."""
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+    except ImportError:
+        pass
 
 
 def _fmt_ts(seconds: float) -> str:
@@ -111,7 +137,32 @@ def run(
     compute_type: str = "float16",
     cookies_from_browser: str | None = None,
     cookiefile: Path | None = None,
+    summarize: bool = True,
+    summarize_server_url: str = summarize_step.DEFAULT_SERVER,
+    summarize_model: Path = summarize_step.DEFAULT_MODEL,
+    llama_server_bin: str = summarize_step.DEFAULT_SERVER_BIN,
+    summarize_server_wait_timeout: int = 180,
 ) -> None:
+    # Pre-flight: if we'll need to spawn llama-server later, fail now if the
+    # binary or model doesn't exist — better than running 10 min of pipeline
+    # then hitting it.
+    if summarize and not summarize_step._server_alive(summarize_server_url):
+        if not summarize_model.exists():
+            print(
+                f"ERROR: --summarize-model not found: {summarize_model}\n"
+                f"Pass --summarize-model PATH or --no-summarize.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+        if shutil.which(llama_server_bin) is None and not Path(llama_server_bin).exists():
+            print(
+                f"ERROR: llama-server binary not found: {llama_server_bin}\n"
+                f"Pass --llama-server-bin PATH or --no-summarize.\n"
+                f"Build instructions: docs/summarize.md.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+
     print(f"Resolving {url}")
     video_id = _resolve_video_id(url, cookies_from_browser, cookiefile)
     work_dir = Path(tempfile.gettempdir()) / f"summarize-video-{video_id}"
@@ -131,7 +182,7 @@ def run(
     steps_cached: list[str] = []
 
     # --- 1. download -------------------------------------------------------
-    total_steps = 4 if no_diarize else 5
+    total_steps = (4 if no_diarize else 5) + (1 if summarize else 0)
     t0 = _step(f"1/{total_steps} download")
     if audio_path.exists() and not force:
         steps_cached.append("download")
@@ -212,6 +263,9 @@ def run(
             speakers = sorted({t["speaker"] for t in result["diarization"]})
             steps_run.append("diarize")
             print(f"  speakers: {len(speakers)} ({', '.join(speakers)})")
+            # Drop the pipeline so its GPU memory is reclaimable before
+            # llama-server tries to load 22 GB of weights at step 6.
+            del pipeline
         _done(t0)
 
         # --- 5. merge ------------------------------------------------------
@@ -224,6 +278,52 @@ def run(
         _done(t0)
 
         final_files = [text_path, timed_path, diarized_txt]
+
+    # --- 6. summarize (optional) ------------------------------------------
+    summary_path: Path | None = None
+    if summarize:
+        # Prefer the diarized transcript for summarization; fall back to
+        # the timed text when --no-diarize.
+        summary_input = diarized_txt if not no_diarize else timed_path
+        summary_path = summary_input.with_suffix(".summary.md")
+        t0 = _step(f"{total_steps}/{total_steps} summarize")
+        if summary_path.exists() and not force:
+            steps_cached.append("summarize")
+            print(f"  cached: {summary_path}")
+        else:
+            # Free GPU before loading 22 GB of Gemma — whisper/pyannote
+            # cached blocks would push us into OOM on a 24 GB card.
+            _free_gpu()
+            spawned_here = False
+            try:
+                if summarize_step._server_alive(summarize_server_url):
+                    print(f"  reusing existing server at {summarize_server_url}")
+                else:
+                    print(f"  spawning llama-server (model load takes 30-90s)...")
+                    summarize_step._ensure_server(
+                        summarize_server_url,
+                        summarize_model,
+                        server_cmd=None,
+                        wait_timeout=summarize_server_wait_timeout,
+                        server_bin=llama_server_bin,
+                    )
+                    spawned_here = True
+                summarize_step.summarize(
+                    summary_input,
+                    output=summary_path,
+                    server_url=summarize_server_url,
+                    auto_start=False,
+                )
+                steps_run.append("summarize")
+                print(f"  -> {summary_path}")
+            finally:
+                # Only stop the server if we started it. If the user had
+                # one running externally, leave it alone.
+                if spawned_here:
+                    print("  stopping llama-server...")
+                    summarize_step.stop_server(quiet=True)
+        _done(t0)
+        final_files.append(summary_path)
 
     # --- copy final outputs to user-facing directory -----------------------
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -251,6 +351,8 @@ def run(
     print(f"Transcript:    {transcript_path}")
     if not no_diarize:
         print(f"Diarization:   {diarization_path}")
+    if summary_path is not None:
+        print(f"Summary:       {summary_path}")
     print(f"Steps run:     {', '.join(steps_run) or '—'}")
     print(f"Cached:        {', '.join(steps_cached) or '—'}")
     print(f"Language:      {transcript.get('language', 'unknown')}")
@@ -304,6 +406,32 @@ def main() -> None:
         "--cookies", type=Path, default=None,
         help="Path to an exported Netscape-format cookies file for yt-dlp.",
     )
+    parser.add_argument(
+        "--no-summarize", action="store_true",
+        help="Skip the summarize step (step 6). Runs transcription + "
+             "diarization only; no llama-server needed.",
+    )
+    parser.add_argument(
+        "--summarize-model", type=Path, default=summarize_step.DEFAULT_MODEL,
+        help=f"GGUF model path that llama-server will load for summarization. "
+             f"Default: {summarize_step.DEFAULT_MODEL}.",
+    )
+    parser.add_argument(
+        "--llama-server-bin", default=summarize_step.DEFAULT_SERVER_BIN,
+        help=f"llama-server binary (name on PATH or absolute path). "
+             f"Default: {summarize_step.DEFAULT_SERVER_BIN}.",
+    )
+    parser.add_argument(
+        "--summarize-server-url", default=summarize_step.DEFAULT_SERVER,
+        help=f"llama-server URL (default: {summarize_step.DEFAULT_SERVER}). "
+             f"If a server is already up at this URL, the orchestrator reuses "
+             f"it (and leaves it running on completion); otherwise it spawns "
+             f"one after step 5 and stops it after step 6.",
+    )
+    parser.add_argument(
+        "--summarize-server-wait-timeout", type=int, default=180,
+        help="Seconds to wait for spawned llama-server to be ready (default 180).",
+    )
     args = parser.parse_args()
 
     run(
@@ -322,6 +450,11 @@ def main() -> None:
         compute_type=args.compute_type,
         cookies_from_browser=args.cookies_from_browser,
         cookiefile=args.cookies,
+        summarize=not args.no_summarize,
+        summarize_server_url=args.summarize_server_url,
+        summarize_model=args.summarize_model,
+        llama_server_bin=args.llama_server_bin,
+        summarize_server_wait_timeout=args.summarize_server_wait_timeout,
     )
 
 

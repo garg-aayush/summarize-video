@@ -7,14 +7,18 @@ Hindi + English code-switched.
 
 ```
                   ┌─► transcribe ─► dedupe ─┐
-URL ─► download ──┤  (whisper)      (loops) ├─► merge ─► <id>.diarized.txt
-   (yt-dlp)       │                          │
+URL ─► download ──┤  (whisper)      (loops) ├─► merge ─► summarize ─► <id>.diarized.summary.md
+   (yt-dlp)       │                          │             (Gemma 4)
                   └─► diarize ───────────────┘
                        (pyannote)
 ```
 
 Transcribe uses `mlx-whisper` on Apple Silicon and `faster-whisper`
 (CTranslate2) on Linux/CUDA; both are selected automatically by platform.
+The summarize step is opt-out (`--no-summarize`); the orchestrator spawns
+`llama-server` after step 5 (so whisper/pyannote VRAM is freed first) and
+stops it after step 6 — pass `--llama-server-bin PATH` if the binary
+isn't on PATH.
 
 ---
 

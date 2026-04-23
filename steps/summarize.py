@@ -22,7 +22,8 @@ import urllib.request
 from pathlib import Path
 
 DEFAULT_SERVER = "http://127.0.0.1:8081"
-DEFAULT_MODEL = Path.home() / "models/gemma-4-31b/gemma-4-31B-it-UD-Q4_K_XL.gguf"
+DEFAULT_MODEL = Path.home() / "MODELS/unsloth/gemma-4-31B-it-GGUF/gemma-4-31B-it-UD-Q4_K_XL.gguf"
+DEFAULT_SERVER_BIN = "llama-server"
 PID_FILE = Path("/tmp/summarize-video-llama-server.pid")
 LOG_FILE = Path("/tmp/summarize-video-llama-server.log")
 
@@ -71,18 +72,24 @@ def _print_loaded_models(server_url: str) -> None:
         print(f"Loaded model(s): {', '.join(models)}")
 
 
-def _build_server_cmd(model: Path, host: str, port: int) -> list[str]:
-    """Default llama-server command tuned for Gemma 4 31B on a 36 GB Mac.
+def _build_server_cmd(model: Path, host: str, port: int, server_bin: str = DEFAULT_SERVER_BIN) -> list[str]:
+    """Default llama-server command tuned for Gemma 4 31B.
 
     Summarization is prefill-bound (huge input, small output), so the main
-    levers are `--ubatch-size` (Metal kernel batch — 2x default of 512) and
-    `--batch-size` (logical prefill batch). KV-cache quantization halves the
-    cache memory; flash-attn is required to use a quantized cache.
+    levers are `--ubatch-size` (GPU kernel batch — 2x default of 512) and
+    `--batch-size` (logical prefill batch). KV-cache quantization halves
+    the cache memory; flash-attn is required to use a quantized cache.
+
+    `--ubatch-size 1024` works on both 24 GB CUDA cards (RTX 4090) and
+    36 GB Macs. Going higher (2048) buys ~2x prefill speed but pushes
+    activation memory to ~4 GB which OOMs the 4090
+    (19 GB weights + 3 GB q8 KV + 4 GB activations > 24 GB). On bigger
+    cards (e.g. A6000 48 GB) push it via --server-cmd.
 
     Mirrors the recipe in docs/summarize.md.
     """
     return [
-        "llama-server",
+        server_bin,
         "-m", str(model),
         "-ngl", "99",
         "-c", "65536",
@@ -132,6 +139,7 @@ def _ensure_server(
     model: Path,
     server_cmd: str | None,
     wait_timeout: int,
+    server_bin: str = DEFAULT_SERVER_BIN,
 ) -> None:
     """If the server is already up, just return. Otherwise spawn one and wait."""
     if _server_alive(server_url):
@@ -146,11 +154,11 @@ def _ensure_server(
         cmd = shlex.split(server_cmd)
     else:
         if not model.exists():
-            sys.exit(
+            raise FileNotFoundError(
                 f"Model file not found: {model}\n"
-                f"Download it (see docs/summarize.md) or pass --model PATH."
+                f"Download it (see docs/summarize.md) or pass --summarize-model PATH."
             )
-        cmd = _build_server_cmd(model, host, port)
+        cmd = _build_server_cmd(model, host, port, server_bin=server_bin)
 
     print(f"Spawning llama-server: {shlex.join(cmd)}")
     pid = _spawn_server(cmd)
@@ -160,25 +168,31 @@ def _ensure_server(
     print(f"Server ready at {server_url}.")
 
 
-def _stop_server() -> None:
+def stop_server(quiet: bool = False) -> bool:
+    """Stop the auto-started llama-server. Returns True if anything was
+    actually killed, False if there was nothing to stop. Non-fatal — safe
+    to call in a `finally` block."""
     if not PID_FILE.exists():
-        sys.exit(
-            f"No PID file at {PID_FILE}. Nothing to stop "
-            "(or the server wasn't started by --auto-start)."
-        )
+        if not quiet:
+            print(f"No PID file at {PID_FILE}; nothing to stop.")
+        return False
     try:
         pid = int(PID_FILE.read_text().strip())
     except ValueError:
         PID_FILE.unlink(missing_ok=True)
-        sys.exit(f"Bad PID in {PID_FILE}; removed it.")
+        if not quiet:
+            print(f"Bad PID in {PID_FILE}; removed it.")
+        return False
 
-    print(f"Stopping llama-server (PID {pid})...")
+    if not quiet:
+        print(f"Stopping llama-server (PID {pid})...")
     try:
         os.kill(pid, signal.SIGTERM)
     except ProcessLookupError:
-        print(f"  Process {pid} not running; cleaning up PID file.")
+        if not quiet:
+            print(f"  Process {pid} not running; cleaning up PID file.")
         PID_FILE.unlink(missing_ok=True)
-        return
+        return False
 
     # Up to 10s for graceful shutdown, then SIGKILL.
     for _ in range(20):
@@ -188,13 +202,22 @@ def _stop_server() -> None:
         except ProcessLookupError:
             break
     else:
-        print(f"  Force-killing {pid}...")
+        if not quiet:
+            print(f"  Force-killing {pid}...")
         try:
             os.kill(pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
     PID_FILE.unlink(missing_ok=True)
-    print("Stopped.")
+    if not quiet:
+        print("Stopped.")
+    return True
+
+
+# CLI-facing wrapper kept for back-compat: prints + exits like before.
+def _stop_server() -> None:
+    if not stop_server():
+        sys.exit("Nothing to stop (or wasn't started via --auto-start).")
 
 
 # --- chat call ---------------------------------------------------------------
@@ -244,6 +267,41 @@ def _clean_output(response: str) -> str:
     return text
 
 
+# --- public API --------------------------------------------------------------
+
+def summarize(
+    transcript: Path,
+    output: Path | None = None,
+    server_url: str = DEFAULT_SERVER,
+    model: Path = DEFAULT_MODEL,
+    auto_start: bool = True,
+    server_cmd: str | None = None,
+    server_bin: str = DEFAULT_SERVER_BIN,
+    server_wait_timeout: int = 180,
+    temperature: float = 0.3,
+    max_tokens: int = 4096,
+    timeout: int = 900,
+) -> Path:
+    """Summarize a transcript via llama-server; returns the output path.
+
+    If `auto_start` is True (the default when called from the orchestrator),
+    spawns `llama-server` if one isn't already reachable at `server_url`.
+    The server is left running so subsequent calls are fast.
+    """
+    text = Path(transcript).read_text()
+    if auto_start:
+        _ensure_server(server_url, model, server_cmd, server_wait_timeout, server_bin)
+    elif not _server_alive(server_url):
+        raise RuntimeError(
+            f"Cannot reach llama-server at {server_url}. "
+            "Start it manually (see docs/summarize.md), or pass auto_start=True."
+        )
+    raw = _post_chat(server_url, text, temperature, max_tokens, timeout)
+    out = output or Path(transcript).with_suffix(".summary.md")
+    out.write_text(_clean_output(raw) + "\n")
+    return out
+
+
 # --- entrypoint --------------------------------------------------------------
 
 def main() -> None:
@@ -274,6 +332,9 @@ def main() -> None:
     server.add_argument("--server-cmd", default=None,
                         help="Full custom command for --auto-start (overrides --model + defaults). "
                              "Pass as a single quoted string.")
+    server.add_argument("--server-bin", default=DEFAULT_SERVER_BIN,
+                        help=f"llama-server binary (name on PATH or absolute path). "
+                             f"Default: {DEFAULT_SERVER_BIN}.")
     server.add_argument("--server-wait-timeout", type=int, default=180,
                         help="Seconds to wait for --auto-start server to become ready. Default 180.")
     args = parser.parse_args()
@@ -285,23 +346,22 @@ def main() -> None:
     if args.transcript is None:
         parser.error("transcript is required (unless using --stop-server)")
 
-    transcript = args.transcript.read_text()
-    print(f"Transcript: {args.transcript} ({len(transcript):,} chars)")
-
-    if args.auto_start:
-        _ensure_server(args.server_url, args.model, args.server_cmd, args.server_wait_timeout)
-    elif not _server_alive(args.server_url):
-        sys.exit(
-            f"Cannot reach llama-server at {args.server_url}.\n"
-            f"Start it manually (see docs/summarize.md), or re-run with --auto-start."
-        )
-    _print_loaded_models(args.server_url)
-
+    print(f"Transcript: {args.transcript} ({len(args.transcript.read_text()):,} chars)")
     print("Generating summary (this can take a few minutes)...")
-    raw = _post_chat(args.server_url, transcript, args.temperature, args.max_tokens, args.timeout)
-
-    output = args.output or args.transcript.with_suffix(".summary.md")
-    output.write_text(_clean_output(raw) + "\n")
+    output = summarize(
+        args.transcript,
+        output=args.output,
+        server_url=args.server_url,
+        model=args.model,
+        auto_start=args.auto_start,
+        server_cmd=args.server_cmd,
+        server_bin=args.server_bin,
+        server_wait_timeout=args.server_wait_timeout,
+        temperature=args.temperature,
+        max_tokens=args.max_tokens,
+        timeout=args.timeout,
+    )
+    _print_loaded_models(args.server_url)
     print(f"Wrote: {output}")
 
 
