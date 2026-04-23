@@ -5,7 +5,24 @@ description = "Local pipeline to summarize YouTube videos (podcast-style discuss
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "mlx-whisper>=0.4.3",
     "pyannote-audio>=4.0.4",
     "yt-dlp>=2026.3.17",
+    "mlx-whisper>=0.4.3; sys_platform == 'darwin'",
+    "faster-whisper>=1.0.3; sys_platform == 'linux'",
+    # Direct pins so [tool.uv.sources] can redirect torch/torchaudio to the
+    # cu128 PyTorch index on Linux (uv sources don't apply to transitive deps).
+    "torch>=2.6; sys_platform == 'linux'",
+    "torchaudio>=2.6; sys_platform == 'linux'",
 ]
+
+# Linux torch wheels: default PyPI ships cu130, which needs NVIDIA driver
+# R580+. Pin to the cu128 index so CUDA 12.8 drivers (R570) keep working.
+# Mac is unaffected (no marker match → vanilla PyPI wheel).
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+torchaudio = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
