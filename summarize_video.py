@@ -9,10 +9,6 @@ discussions). Six steps:
   5. merge      (steps.merge.merge)                  [skipped with --no-diarize]
   6. summarize  (steps.summarize.summarize)          [skipped with --no-summarize]
 
-Step 6 requires a running llama-server. The orchestrator pre-flights the
-server at startup and refuses to run if it's unreachable — start it
-manually (see docs/summarize.md) or pass --no-summarize.
-
 Intermediate files land in a per-URL system temp dir
 (`/tmp/summarize-video-<id>/...`), so re-running the same URL skips
 already-done steps. Final outputs are copied into the output directory
@@ -61,23 +57,14 @@ def _free_gpu() -> None:
     """Release whisper/pyannote GPU references so llama-server has the
     full card to itself. Gemma 4 31B Q4_K_XL at 64K context sits within
     ~500 MB of the 24 GB limit on a 4090, so cached PyTorch blocks or
-    lingering CT2 contexts will OOM the model load.
-
-    Order matters: synchronize first (drain pending CUDA work), then two
-    gc passes (first drops refs, second breaks cycles the first uncovered),
-    then empty_cache to return freed blocks to the driver. Logs the
-    before/after so failures are debuggable."""
-    try:
-        import torch
-        if not torch.cuda.is_available():
-            gc.collect()
-            return
-    except ImportError:
-        gc.collect()
+    lingering CT2 contexts will OOM the model load."""
+    import torch
+    if not torch.cuda.is_available():
         return
 
     before_free, total = torch.cuda.mem_get_info()
     torch.cuda.synchronize()
+    # Two passes: first drops refs, second breaks cycles the first uncovered.
     gc.collect()
     gc.collect()
     torch.cuda.empty_cache()
@@ -306,8 +293,6 @@ def run(
     # --- 6. summarize (optional) ------------------------------------------
     summary_path: Path | None = None
     if summarize:
-        # Prefer the diarized transcript for summarization; fall back to
-        # the timed text when --no-diarize.
         summary_input = diarized_txt if not no_diarize else timed_path
         summary_path = summary_input.with_suffix(".summary.md")
         t0 = _step(f"{total_steps}/{total_steps} summarize")
@@ -323,7 +308,7 @@ def run(
                 if summarize_step._server_alive(summarize_server_url):
                     print(f"  reusing existing server at {summarize_server_url}")
                 else:
-                    print(f"  spawning llama-server (model load takes 30-90s)...")
+                    print("  spawning llama-server (model load takes 30-90s)...")
                     summarize_step._ensure_server(
                         summarize_server_url,
                         summarize_model,
@@ -361,8 +346,6 @@ def run(
                 steps_run.append("summarize")
                 print(f"  -> {summary_path}")
             finally:
-                # Only stop the server if we started it. If the user had
-                # one running externally, leave it alone.
                 if spawned_here:
                     print("  stopping llama-server...")
                     summarize_step.stop_server(quiet=True)
@@ -395,7 +378,7 @@ def run(
     print(f"Transcript:    {transcript_path}")
     if not no_diarize:
         print(f"Diarization:   {diarization_path}")
-    if description_path.exists() and description_path.stat().st_size > 0:
+    if description:
         print(f"Description:   {description_path}")
     if episode_context_path.exists():
         print(f"Episode ctx:   {episode_context_path}")

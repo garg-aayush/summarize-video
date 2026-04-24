@@ -112,9 +112,8 @@ def dedupe_transcript(transcript: dict, max_n: int = 6, min_repeats: int = 3) ->
             # Rebuild text from cleaned words (Whisper words include leading
             # spaces, so a plain join reconstructs the segment text).
             new_seg["text"] = "".join(w["word"] for w in cleaned_words)
-            if cleaned_words:
-                new_seg["start"] = cleaned_words[0].get("start", new_seg.get("start"))
-                new_seg["end"] = cleaned_words[-1].get("end", new_seg.get("end"))
+            new_seg["start"] = cleaned_words[0]["start"]
+            new_seg["end"] = cleaned_words[-1]["end"]
         else:
             new_seg["text"] = _collapse_text(seg.get("text", ""), max_n, min_repeats)
         new_segments.append(new_seg)
