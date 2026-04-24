@@ -1,18 +1,63 @@
-# summarize-video
+# YouTube Video Summarizer
 
-Local pipeline I built to turn a YouTube URL into a speaker-attributed transcript and a structured Markdown summary. Aimed at podcast-style discussions — English, or Hindi + English code-switched. Uses `yt-dlp` for audio, Whisper for transcription (`mlx-whisper` on Apple Silicon, `faster-whisper` on Linux/CUDA), `pyannote.audio` for diarization, and `llama.cpp` (Gemma 4 31B) for summarization — all running on-device.
+This is a small pipeline I built to turn a YouTube URL into a speaker-attributed transcript and a structured Markdown summary. It runs entirely on my own machine with no API keys, no cloud calls and no proprietary models.
+
+Every model in the pipeline is open-weight and swappable: 
+- `yt-dlp` grabs the audio, 
+- Whisper (large-v3/large-v3-turbo) does the transcription (`mlx-whisper` on Apple Silicon, `faster-whisper` on Linux/CUDA), 
+- `pyannote.audio` handles speaker diarization
+- `llama.cpp` runs Gemma 4 31B for the final summary
+
+The main use case I have in mind is to summarize podcast-style discussions either in English or Hindi + English/Hinglish (code-switched) long-form conversations with a readable transcript with speaker labels and a quick structured summary.
 
 ## Pipeline
 
 ```
-                  ┌─► transcribe ─► dedupe ─┐
-URL ─► download ──┤   (mlx-whisper)  (loops) ├─► merge ─► <id>.diarized.txt
-   (yt-dlp)       │                          │
-                  └─► diarize ───────────────┘
-                       (pyannote)
+                         ┌─► transcribe ─► dedupe ─┐
+URL ─► download ─────────┤   (whisper)    (loops)  ├─► merge ─► <id>.diarized.txt
+ │     (yt-dlp)          │                         │   (align)            │
+ │                       └─► diarize ──────────────┘                      │
+ │                           (pyannote)                                   │  [transcript]
+ ▼                                                                        │
+<id>.description.txt                                                      │
+ │                                                                        │
+ ▼                                                                        │
+extract episode ctx ──► <id>.episode_context.md ──┐                       │
+(llama.cpp call 1:                                │  [grounding]          │
+ Gemma 4 31B, reasoning off)                      ▼                       ▼
+                                            ┌─────────────────────────────────┐
+                                            │ summarize                       │
+                                            │ (llama.cpp call 2:              │ ──► <id>.diarized.summary.md
+                                            │  Gemma 4 31B, reasoning on)     │
+                                            └─────────────────────────────────┘
 ```
 
-Final outputs: `[mm:ss - mm:ss] SPEAKER_xx: utterance` lines plus a `<id>.diarized.summary.md` (TL;DR, key points, chapters, takeaways, quotes, resources). The summarize step is opt-out via `--no-summarize`.
+Here is what each step is doing:
+
+1. **Download**: `yt-dlp` pulls two things off YouTube: the audio track and the video description. I grab the description too because it is free context with the episode title, the host and guests names are almost always in there.
+
+2. **Transcribe**: Whisper turns the audio into text with timestamps. This is the heavy step and does most of the actual "speech to text" work.
+
+3. **Dedupe**: Whisper sometimes gets stuck in a loop and repeats the same phrase over and over, especially during silences or background music. This step spots those loops and collapses them so the transcript reads cleanly.
+
+4. **Diarize**: While transcription is happening, `pyannote` looks at the same audio and works out *who* is speaking *when*. It just works out the speaker turns, not the words (e.g. speaker A from 0:00 to 0:12, speaker B from 0:12 to 0:18).
+
+5. **Merge**: I line up the words from step 3 with the speaker turns from step 4 so every line of the transcript knows who said it. The result is a readable `[mm:ss - mm:ss] SPEAKER_xx: text` file, the main transcript output.
+
+6. **Summarize**: This is where the local LLM (Gemma 4 31B, run through `llama.cpp`) comes in. I spin up `llama-server` once and make two back-to-back calls against the same loaded model:
+   - **Episode context first**: I hand the raw YouTube description to the model and ask it to pull out the episode title, the host and guests names, and any other notable named entities into a small cheat-sheet (`<id>.episode_context.md`).
+   - **Full summary next**: I prepend that episode context to the speaker-attributed transcript and ask the model to write a structured summary that includes TL;DR, key points, chapters with timestamps, takeaways, important quotes and resources. Note, having the episode context in front of it helps the model label speakers correctly and spell names right, especially useful for Hindi names that it would otherwise butcher. It also helps the model to ground the named entities in the transcript.
+
+You end up with four files in your working directory:
+
+- `<id>.txt` — plain deduped transcript text
+- `<id>.timed.txt` — transcript with timestamps
+- `<id>.diarized.txt` — speaker-attributed transcript
+- `<id>.diarized.summary.md` — the structured summary
+
+All the intermediate files live under `/tmp/summarize-video-<id>/`, keyed by the YouTube video id. Re-running the same URL picks up whatever is already on disk, so finished steps are skipped; pass `-f` to force a full re-run. 
+
+> For the deeper notes — per-step flags, backend trade-offs, known quirks and why each choice was made — see [`docs/pipeline.md`](docs/pipeline.md).
 
 ## Quickstart
 
@@ -44,181 +89,102 @@ cmake --build ~/llama.cpp/build --config Release -j$(nproc)
 
 uv tool install huggingface_hub
 mkdir -p ~/MODELS/unsloth/gemma-4-31B-it-GGUF
-hf download unsloth/gemma-4-31B-it-GGUF gemma-4-31B-it-UD-Q4_K_XL.gguf \
-  --local-dir ~/MODELS/unsloth/gemma-4-31B-it-GGUF
+hf download unsloth/gemma-4-31B-it-GGUF gemma-4-31B-it-UD-Q4_K_XL.gguf --local-dir ~/MODELS/unsloth/gemma-4-31B-it-GGUF
 
 # 5. Transcribe + diarize + summarize a video
-#    First run downloads ~2 GB of whisper/pyannote models.
-#    Step 6 spawns llama-server, runs Gemma, and stops it (~60s overhead +
-#    summarize time). Pass --no-summarize to skip if you only want the transcript.
-LD_LIBRARY_PATH= uv run python summarize_video.py \
-  "https://www.youtube.com/watch?v=HeAGWTgi4sU" -l en \
+LD_LIBRARY_PATH= uv run python summarize_video.py "https://www.youtube.com/watch?v=HeAGWTgi4sU" -l en \
   --llama-server-bin ~/llama.cpp/build/bin/llama-server
 ```
 
-The `LD_LIBRARY_PATH=` prefix is only needed if the system has an older cuDNN installed (common when a CUDA Toolkit is present) that shadows torch's bundled one — drop it otherwise.
+The `LD_LIBRARY_PATH=` prefix is only needed if the system has an older cuDNN installed (common when a CUDA Toolkit is present), drop it otherwise.
 
 ### macOS (Apple Silicon)
 
+_TBD — need to re-run the pipeline on a Mac and capture the exact steps before writing this up._
+
+### Example commands
+
+**English panel** (~31 min, 3 speakers):
+
 ```bash
-brew install ffmpeg
-git clone <repo-url> summarize-video && cd summarize-video
-uv sync
-export HF_TOKEN=hf_xxx...    # accept the 3 pyannote model gates as above
-uv run python summarize_video.py \
-  "https://www.youtube.com/watch?v=HeAGWTgi4sU" -l en
+LD_LIBRARY_PATH= uv run python summarize_video.py \
+  "https://www.youtube.com/watch?v=02YLwsCKUww" \
+  -l en --num-speakers 3 \
+  --llama-server-bin ~/llama.cpp/build/bin/llama-server
 ```
 
-### Outputs (both platforms)
+- `-l en` tells Whisper the language up front so it doesn't mis-detect on the first audio chunk.
+- `--num-speakers 3` hands `pyannote` the speaker count; the turns come out a lot cleaner than letting it guess.
 
-Three files land in the current working directory:
-
-- `<id>.txt` — plain deduped text
-- `<id>.timed.txt` — `[mm:ss - mm:ss] text`
-- `<id>.diarized.txt` — `[mm:ss - mm:ss] SPEAKER_xx: text`
-
-Intermediate artifacts (audio, JSON, 16 kHz wav, pyannote output) live in `/tmp/summarize-video-<id>/`, so re-running the same URL skips finished steps. Pass `-f` to force a full re-run.
-
-## Linux / CUDA notes
-
-`uv sync` on Linux pulls `faster-whisper` and a `torch+cu128` wheel (instead of `mlx-whisper`). This targets driver R570+ (CUDA 12.8). If you have R580+ you can drop to the default cu130 wheel by removing the `[tool.uv.sources]` block in `pyproject.toml`.
-
-If the system has cuDNN installed (e.g. from the CUDA Toolkit) and it's older than torch's bundled one, pyannote will crash with `RuntimeError: cuDNN version incompatibility`. Clear `LD_LIBRARY_PATH` for the run so torch finds its own:
+**Hindi-English code-switched** (~8 min, 2 speakers):
 
 ```bash
-LD_LIBRARY_PATH= uv run python summarize_video.py "<URL>" -l en
-```
-
-## "Sign in to confirm you're not a bot"
-
-YouTube now gates some videos behind a bot-check. If the download step fails with that message, hand yt-dlp a browser session's cookies:
-
-```bash
-# Use whichever browser you're signed in to YouTube on
-uv run python summarize_video.py "<URL>" -l en --cookies-from-browser chrome
-# alternatives: firefox, brave, edge, safari
-
-# Or pass an exported Netscape-format cookie file:
-uv run python summarize_video.py "<URL>" -l en --cookies ~/cookies.txt
-```
-
-On Linux, Chrome/Brave encrypt their cookie jar against the system keyring (gnome-keyring / kwallet); if yt-dlp can't unlock it, use Firefox (plaintext SQLite) or export a cookies file via a browser extension.
-
-## More run examples
-
-```bash
-# Hindi-English code-switched (best params I've found)
-uv run python summarize_video.py "<URL>" -m v3 -l hi \
+LD_LIBRARY_PATH= uv run python summarize_video.py \
+  "https://www.youtube.com/watch?v=HeAGWTgi4sU" \
+  -m v3 -l hi --num-speakers 2 \
   --compression-ratio-threshold 2.0 \
-  --hallucination-silence-threshold 2.0
-
-# Known speaker count helps diarization
-uv run python summarize_video.py "<URL>" -l en --num-speakers 2
-
-# Skip diarization entirely (faster; plain + timed transcript only)
-uv run python summarize_video.py "<URL>" -l en --no-diarize
-
-# Drop final transcripts in a specific folder
-uv run python summarize_video.py "<URL>" -l en -o ~/Documents/transcripts/
-
-# Force a full re-run, ignoring cached intermediates
-uv run python summarize_video.py "<URL>" -l en -f
+  --hallucination-silence-threshold 2.0 \
+  --llama-server-bin ~/llama.cpp/build/bin/llama-server
 ```
 
-The pipeline prints a summary at the end with the work-dir path, steps run vs cached, language, word/segment/speaker counts, and the final output paths.
+- `-m v3` switches Whisper to the full `large-v3` model. The default `turbo` is English-tuned and misdetects Hindi as English on this clip.
+- `-l hi` forces Hindi, Whisper then writes Hindi words in Devanagari and English words in Latin script which is the "Hinglish" output I want.
+- `--compression-ratio-threshold 2.0` and `--hallucination-silence-threshold 2.0` are tighter thresholds that help Whisper catch repetition loops and silence-filler hallucinations earlier. Code-switched audio is especially prone to both.
+- `--num-speakers 2` for the two-speaker interview.
 
-### Important params
+### Other things you might want to do
 
-| flag | when to use |
-|---|---|
-| `-m v3` | Non-English / accented / code-switched audio. Slower than `turbo` but multilingual quality is much better. |
-| `-b {mlx,faster}` | Override the auto-selected backend. Default: `mlx` on Apple Silicon, `faster` on Linux. |
-| `-l <code>` | Force language (`hi`, `en`, …). Default auto-detects from the first chunk, which can mis-fire on code-switched audio. |
-| `--no-diarize` | Skip steps 4 + 5. Useful when you don't care who said what (saves the pyannote download + ~minutes of compute). |
-| `-o DIR` | Where final transcripts land. Default: current working directory. |
-| `--compression-ratio-threshold 2.0` | Catch repetition loops earlier (default 2.4). Lower = more aggressive temperature-fallback re-decoding. |
-| `--hallucination-silence-threshold 2.0` | Suppress text generated during silences > N seconds. |
-| `--num-speakers N` / `--min-speakers` / `--max-speakers` | Hint the diarizer when you know the count. |
-| `--compute-type` | CTranslate2 compute type for the `faster` backend. Default `float16`; try `int8_float16` for lower VRAM. |
-| `--no-summarize` | Skip step 6 (Gemma summary). No `llama-server` needed. |
-| `--summarize-model PATH` | GGUF model used for summarization. Default: `~/MODELS/unsloth/gemma-4-31B-it-GGUF/gemma-4-31B-it-UD-Q4_K_XL.gguf`. |
-| `--llama-server-bin PATH` | `llama-server` binary. Default `llama-server` (PATH lookup); pass an absolute path otherwise. |
-| `--summarize-server-url URL` | If a server is already running at this URL, reuse it instead of spawning. |
+- **Run just one step**: every step is a standalone module you can call on its own, e.g. `uv run python -m steps.transcribe <file>.m4a`. It is handy when you want to iterate on one stage without re-running everything.
+- **Skip the summary**: pass `--no-summarize` to just get the transcripts. `llama-server` won't even spawn, so no Gemma / llama.cpp setup is needed at all.
+- **Skip the description cheat-sheet**: pass `--no-episode-context` to keep the summary but drop the grounding from the YouTube description.
+- **Skip speaker diarization**: pass `--no-diarize` if you don't care who said what. The pipeline finishes a lot faster: no `pyannote` download, no 16 kHz resample, no merge step.
+- **Force a full re-run**: pass `-f` to ignore the cached intermediates under `/tmp/summarize-video-<id>/` and redo every step from scratch.
+- **Write outputs somewhere else**: pass `-o DIR` to land the final files in a different folder instead of the working directory.
 
-Reference test clip: [`HeAGWTgi4sU`](https://www.youtube.com/watch?v=HeAGWTgi4sU) (~8 min, Hindi-English).
+> You can find the full flag list, per-step options, backend trade-offs and the reasoning behind each default in [`docs/pipeline.md`](docs/pipeline.md).
 
 ## Benchmarks
 
-Numbers from my box (RTX 4090 24 GB, i7-12700KF, 32 GB RAM, Ubuntu 24.04) via `./benchmark.sh all` — cold cache, `-f` forced, summarize on. Two canonical cases:
+**Linux + CUDA**: RTX 4090 box (24 GB, i7-12700KF, 32 GB RAM, Ubuntu 24.04)
 
-- **en** — 31-min English panel, `turbo` + 3 speakers
-- **hi** — 8-min Hindi-English clip, `v3` + 2 speakers
-
-| case | audio | transcribe | diarize | summarize | total | realtime |
+| case | audio | transcribe | diarize | summarize | total wall | realtime |
 |---|---|---|---|---|---|---|
-| en (turbo) | 31m 11s | 90.2s  | 57.7s | 79.9s | **4m 5s**  | 7.7× |
-| hi (v3)    | 8m 14s  | 116.1s | 28.4s | 55.2s | **3m 39s** | 2.3× |
+| en (turbo, 3 speakers) | 31m 11s | 110.5s | 39.2s | 96.0s | **4m 22s** | 7.1× |
+| hi (v3, 2 speakers)    | 8m 14s  | 87.8s  | 24.6s | 66.6s | **3m 15s** | 2.5× |
 
-Transcribe dominates on short clips; diarize scales with audio length; summarize scales with transcript length. `v3` on an 8-minute Hindi clip takes about as long as `turbo` on a 31-minute English panel — the deeper decoder (32 layers vs 4) is where the multilingual quality comes from. Per-step wall times vary ±10–15% run-to-run on this box — treat these as a single-run snapshot, not a tight average.
+Mac (Apple Silicon) numbers TBD — need to re-run on a Mac.
 
-Llama-server runs at `--ubatch-size 512 -c 65536` on this card (the orchestrator-aware default for 24 GB CUDA). The smaller ubatch doesn't noticeably slow the summarize step at these transcript sizes — prefill isn't the bottleneck vs server startup + decode — and fitting the full 64K on the 4090 leaves plenty of margin for 2-hour podcasts.
+Transcribe is usually the biggest step, summarize is close behind, diarize scales with audio length. Per-step wall times can swing 10–25% run-to-run on this box (GPU thermal state, background load) — treat as a single-run snapshot, not a tight average.
 
-Re-run: `./benchmark.sh en`, `./benchmark.sh hi`, or `./benchmark.sh all`. Raw logs and per-step timings land in `benchmark/<video-id>-<platform>-<timestamp>/`.
-
-## Run individual steps
-
-If you want to re-run just one stage, I've made each module invocable directly:
-
-```bash
-uv run python -m steps.download   "<URL>"
-uv run python -m steps.transcribe downloads/<id>.m4a -m v3 -l hi
-uv run python -m steps.dedupe     downloads/<id>.json
-uv run python -m steps.diarize    downloads/<id>.m4a
-uv run python -m steps.merge      downloads/<id>.m4a
-```
-
-See [`docs/pipeline.md`](docs/pipeline.md) for what each step does, the file formats it reads/writes, and the full flag list.
-
-## Summarize a transcript standalone
-
-Step 6 runs as part of the orchestrator by default. If you already have a transcript and just want to (re-)summarize it without re-running download/transcribe/diarize, call the step directly:
-
-```bash
-# Auto-spawn llama-server (left running for re-use):
-uv run python -m steps.summarize <id>.diarized.txt --auto-start \
-  --server-bin ~/llama.cpp/build/bin/llama-server
-# -> <id>.diarized.summary.md
-
-# Stop the auto-started server:
-uv run python -m steps.summarize --stop-server
-```
-
-Or start `llama-server` manually (recipe in [`docs/summarize.md`](docs/summarize.md)) and call without `--auto-start`. Output sections: TL;DR, Key points, Chapters (with timestamps), Main takeaways, Important quotes, Resources.
+> Reasoning behind these defaults and how to re-run the canonical cases lives in [`docs/pipeline.md`](docs/pipeline.md#benchmarks).
 
 ## Repo structure
 
 ```
-summarize_video.py        # orchestrator: URL -> diarized transcript
-steps/
-  download.py             # 1. yt-dlp -> downloads/<id>.m4a
-  transcribe.py           # 2. mlx-whisper -> .json + .txt
-  dedupe.py               # 3. collapse Whisper repetition loops
-  diarize.py              # 4. pyannote -> .diarization.json + .rttm
-  merge.py                # 5. words × turns -> .diarized.txt
-  summarize.py            # (optional) local LLM summary via llama.cpp
+summarize_video.py        # orchestrator — URL to all outputs
+steps/                    # one module per step, each runnable via `python -m steps.<name>`
+  download.py             # 1. yt-dlp -> <id>.m4a + <id>.description.txt
+  transcribe.py           # 2. whisper -> <id>.json + <id>.txt (per-word timestamps)
+  dedupe.py               # 3. collapse whisper repetition loops
+  diarize.py              # 4. pyannote -> <id>.diarization.json + <id>.rttm
+  merge.py                # 5. align words × speaker turns -> <id>.diarized.txt
+  summarize.py            # 6. llama.cpp + Gemma 4 31B -> <id>.diarized.summary.md
+benchmark.sh              # canonical cold-cache timing runs (./benchmark.sh en | hi | all)
+benchmark/                # per-run output + logs (gitignored)
 docs/
-  pipeline.md             # deep-dive on each step + flags
+  pipeline.md             # deep-dive on each step, flags, benchmarks, platform notes
+  summarize.md            # llama.cpp + Gemma 4 31B setup for steps/summarize.py
   definitions.md          # glossary (Whisper, MLX, DTW, diarization, …)
   experiments.md          # things I tried and what I learned
-  summarize.md            # llama.cpp + Gemma 4 31B setup for steps/summarize.py
-downloads/                # default sink for `python -m steps.*` (gitignored).
-                          # The orchestrator uses /tmp/summarize-video-<id>/ instead.
+pyproject.toml / uv.lock  # uv project (pins faster-whisper + torch+cu128 on Linux)
 ```
+
+The orchestrator stages all intermediates in `/tmp/summarize-video-<id>/` (keyed by video id) and copies the four final files into the current working directory (or `-o DIR`). `python -m steps.<name>` invocations default to reading/writing in `downloads/` — useful when iterating on a single step.
 
 ## TODO
 
-- **wav2vec2 forced alignment** — replace Whisper's DTW word timestamps with phoneme-level alignment to fix word-leakage at speaker turn changes.
-- **Speaker name attribution** — map `SPEAKER_00` / `SPEAKER_01` / … to actual names.
-- **`no_repeat_ngram_size` on the faster backend** — CTranslate2 exposes it; wiring it through would prevent repetition loops at decode time rather than after the fact in `dedupe.py`.
+- [ ] **wav2vec2 forced alignment**: replace Whisper's DTW word timestamps with phoneme-level alignment to fix word-leakage at speaker turn changes.
+- [ ] **`no_repeat_ngram_size` on the faster backend**: CTranslate2 exposes it; wiring it through would prevent repetition loops at decode time rather than after the fact in `dedupe.py`.
+- [ ] **User notes as extra summary context**: while listening I often jot down my own notes and timestamps. Feeding them into step 6 alongside the episode-context cheat-sheet would let the summary lean on what I actually cared about.
 
-Details for each in [`docs/pipeline.md`](docs/pipeline.md#todos).
+> Details for each in [`docs/pipeline.md`](docs/pipeline.md#todos).
