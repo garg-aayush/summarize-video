@@ -164,7 +164,7 @@ def run(
             print(
                 f"ERROR: llama-server binary not found: {llama_server_bin}\n"
                 f"Pass --llama-server-bin PATH or --no-summarize.\n"
-                f"Build instructions: docs/summarize.md.",
+                f"Build instructions: docs/pipeline.md#install-llama-cpp.",
                 file=sys.stderr,
             )
             sys.exit(2)

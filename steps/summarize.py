@@ -4,7 +4,7 @@ Talks to a llama-server OpenAI-compatible endpoint. By default expects the
 server to already be running; pass --auto-start to spawn one if it isn't
 (left running on success so subsequent calls are instant).
 
-See docs/summarize.md for the full server setup.
+See docs/pipeline.md#llama-server-setup for the full server setup.
 """
 
 import argparse
@@ -208,7 +208,7 @@ def _build_server_cmd(model: Path, host: str, port: int, server_bin: str = DEFAU
     the faster 1024 / 64K recipe. Either can be overridden with
     --server-cmd.
 
-    Mirrors the recipe in docs/summarize.md.
+    Mirrors the recipe in docs/pipeline.md#start-the-server.
     """
     ubatch, ctx = _pick_ubatch_and_ctx()
     return [
@@ -279,7 +279,7 @@ def _ensure_server(
         if not model.exists():
             raise FileNotFoundError(
                 f"Model file not found: {model}\n"
-                f"Download it (see docs/summarize.md) or pass --summarize-model PATH."
+                f"Download it (see docs/pipeline.md#download-the-model) or pass --summarize-model PATH."
             )
         cmd = _build_server_cmd(model, host, port, server_bin=server_bin)
 
@@ -469,7 +469,7 @@ def summarize(
     elif not _server_alive(server_url):
         raise RuntimeError(
             f"Cannot reach llama-server at {server_url}. "
-            "Start it manually (see docs/summarize.md), or pass auto_start=True."
+            "Start it manually (see docs/pipeline.md#start-the-server), or pass auto_start=True."
         )
     user_message = _build_user_message(text, context)
     raw = _chat(server_url, SYSTEM_PROMPT, user_message, temperature, max_tokens, timeout)

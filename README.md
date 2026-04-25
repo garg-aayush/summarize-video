@@ -141,7 +141,7 @@ LD_LIBRARY_PATH= uv run python summarize_video.py \
 - **Force a full re-run**: pass `-f` to ignore the cached intermediates under `/tmp/summarize-video-<id>/` and redo every step from scratch.
 - **Write outputs somewhere else**: pass `-o DIR` to land the final files in a different folder instead of the working directory.
 
-> You can find the full flag list, per-step options, backend trade-offs and the reasoning behind each default in [`docs/pipeline.md`](docs/pipeline.md).
+> You can find the full flag list and per-step options in [`docs/pipeline.md#parameters`](docs/pipeline.md#parameters), backend trade-offs and the reasoning behind each default in [`docs/pipeline.md#design-rationale`](docs/pipeline.md#design-rationale).
 
 ## Benchmarks
 
@@ -172,8 +172,7 @@ steps/                    # one module per step, each runnable via `python -m st
 benchmark.sh              # canonical cold-cache timing runs (./benchmark.sh en | hi | all)
 benchmark/                # per-run output + logs (gitignored)
 docs/
-  pipeline.md             # deep-dive on each step, flags, benchmarks, platform notes
-  summarize.md            # llama.cpp + Gemma 4 31B setup for steps/summarize.py
+  pipeline.md             # deep-dive: steps, flags, llama-server setup, design rationale, troubleshooting, benchmarks
   definitions.md          # glossary (Whisper, MLX, DTW, diarization, …)
   experiments.md          # things I tried and what I learned
 pyproject.toml / uv.lock  # uv project (pins faster-whisper + torch+cu128 on Linux)
