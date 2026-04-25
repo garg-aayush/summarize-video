@@ -1,0 +1,30 @@
+=== Run ===
+timestamp:   20260424-192754
+url:         https://www.youtube.com/watch?v=HeAGWTgi4sU
+video_id:    HeAGWTgi4sU
+platform:    linux
+hostname:    aayush-MS-7D25
+uname:       Linux aayush-MS-7D25 6.8.0-107-generic #107-Ubuntu SMP PREEMPT_DYNAMIC Fri Mar 13 19:51:50 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+extra_args:  -m v3 -l hi --compression-ratio-threshold 2.0 --hallucination-silence-threshold 2.0 --cookies-from-browser chrome --num-speakers 2 --llama-server-bin /home/aayush/llama.cpp/build/bin/llama-server -f
+
+=== Hardware ===
+NVIDIA GeForce RTX 4090, 570.124.06, 24564 MiB
+cpu: 12th Gen Intel(R) Core(TM) i7-12700KF
+ram: 31.2 GB
+
+=== Python / Torch ===
+python: 3.11.14
+torch: 2.11.0+cu128
+cuda: True NVIDIA GeForce RTX 4090
+
+=== Timing ===
+total_wall_s: 194.50
+exit_status:  0
+
+=== Per-step (from orchestrator log) ===
+=== 1/6 download ===   (2.2s)
+=== 2/6 transcribe  backend=faster model=v3 lang=hi ===   (87.8s)
+=== 3/6 dedupe ===   (0.0s)
+=== 4/6 diarize ===   (24.6s)
+=== 5/6 merge ===   (0.0s)
+=== 6/6 summarize ===   (66.6s)

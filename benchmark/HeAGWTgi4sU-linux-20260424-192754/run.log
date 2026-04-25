@@ -1,0 +1,85 @@
+Extracting cookies from chrome
+Resolving https://www.youtube.com/watch?v=HeAGWTgi4sU
+Work dir: /tmp/summarize-video-HeAGWTgi4sU
+  description: 2879 chars -> HeAGWTgi4sU.description.txt
+
+=== 1/6 download ===
+Extracted 44 cookies from chrome
+[youtube] Extracting URL: https://www.youtube.com/watch?v=HeAGWTgi4sU
+[youtube] HeAGWTgi4sU: Downloading webpage
+[youtube] HeAGWTgi4sU: Downloading web embedded client config
+[youtube] HeAGWTgi4sU: Downloading player 8456c9de-main
+[youtube] HeAGWTgi4sU: Downloading web embedded player API JSON
+[youtube] HeAGWTgi4sU: Downloading android vr player API JSON
+WARNING: [youtube] HeAGWTgi4sU: n challenge solving failed: Some formats may be missing. Ensure you have a supported JavaScript runtime and challenge solver script distribution installed. Review any warnings presented before this message. For more details, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS
+[info] HeAGWTgi4sU: Downloading 1 format(s): 140
+[download] /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.m4a has already been downloaded
+[download] 100% of    7.63MiB
+[ExtractAudio] Not converting audio /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.m4a; file is already in target format m4a
+/home/aayush/repos/summarize-video/.venv/lib/python3.11/site-packages/pyannote/audio/utils/reproducibility.py:74: ReproducibilityWarning: TensorFloat-32 (TF32) has been disabled as it might lead to reproducibility issues and lower accuracy.
+It can be re-enabled by calling
+   >>> import torch
+   >>> torch.backends.cuda.matmul.allow_tf32 = True
+   >>> torch.backends.cudnn.allow_tf32 = True
+See https://github.com/pyannote/pyannote-audio/issues/1370 for more details.
+
+  warnings.warn(
+/home/aayush/repos/summarize-video/.venv/lib/python3.11/site-packages/pyannote/audio/models/blocks/pooling.py:103: UserWarning: std(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at /pytorch/aten/src/ATen/native/ReduceOps.cpp:1858.)
+  std = sequences.std(dim=-1, correction=1)
+  -> /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.m4a
+  (2.2s)
+
+=== 2/6 transcribe  backend=faster model=v3 lang=hi ===
+  detected language: hi
+  segments: 202
+  (87.8s)
+
+=== 3/6 dedupe ===
+  words: 1317 -> 1315 (collapsed 2)
+  (0.0s)
+
+=== 4/6 diarize ===
+  speakers: 2 (SPEAKER_00, SPEAKER_01)
+  (24.6s)
+
+=== 5/6 merge ===
+  utterances: 31
+  (0.0s)
+
+=== 6/6 summarize ===
+  freed +1988 MiB, 23380/24058 MiB now free
+  spawning llama-server (model load takes 30-90s)...
+Spawning llama-server: /home/aayush/llama.cpp/build/bin/llama-server -m /home/aayush/MODELS/unsloth/gemma-4-31B-it-GGUF/gemma-4-31B-it-UD-Q4_K_XL.gguf -ngl 99 -c 65536 --flash-attn on --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --batch-size 2048 --ubatch-size 512 --context-shift --metrics --jinja --host 127.0.0.1 --port 8081
+  PID 627653, log: /tmp/summarize-video-llama-server.log
+  Waiting for model to load (this can take 30-90s)...
+Server ready at http://127.0.0.1:8081.
+  extracting episode context from description...
+  -> HeAGWTgi4sU.episode_context.md (225 chars)
+  -> /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.diarized.summary.md
+  stopping llama-server...
+  (66.6s)
+
+============================================================
+Summary
+============================================================
+Source:        https://www.youtube.com/watch?v=HeAGWTgi4sU
+Work dir:      /tmp/summarize-video-HeAGWTgi4sU
+Audio:         /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.m4a
+Transcript:    /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.json
+Diarization:   /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.diarization.json
+Description:   /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.description.txt
+Episode ctx:   /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.episode_context.md
+Summary:       /tmp/summarize-video-HeAGWTgi4sU/HeAGWTgi4sU.diarized.summary.md
+Steps run:     download, transcribe, dedupe, diarize, merge, episode_context, summarize
+Cached:        —
+Language:      hi
+Segments:      202
+Words:         1315 (dedupe collapsed 2)
+Speakers:      2 (SPEAKER_00, SPEAKER_01)
+Utterances:    31
+
+Final outputs (copied to benchmark/HeAGWTgi4sU-linux-20260424-192754):
+  benchmark/HeAGWTgi4sU-linux-20260424-192754/HeAGWTgi4sU.txt
+  benchmark/HeAGWTgi4sU-linux-20260424-192754/HeAGWTgi4sU.timed.txt
+  benchmark/HeAGWTgi4sU-linux-20260424-192754/HeAGWTgi4sU.diarized.txt
+  benchmark/HeAGWTgi4sU-linux-20260424-192754/HeAGWTgi4sU.diarized.summary.md

@@ -1,0 +1,609 @@
+[00:03.50 - 00:07.88] Welcome everybody and welcome to those of you joining us on livestream to this
+[00:08.40 - 00:13.06] conversation I have to say I have been looking forward to for months. I was
+[00:13.06 - 00:17.12] lucky enough to moderate a conversation between Dari Amadei and
+[00:17.12 - 00:22.26] Demis Hassabis last year in Paris which I'm afraid got most attention for the
+[00:22.26 - 00:26.40] fact that you two were squashed on a very small love seat while I sat on an
+[00:26.40 - 00:30.34] enormous sofa which was probably my screw -up but I said at that point that
+[00:30.34 - 00:33.84] this was for me like you know chairing a conversation between the Beatles and the
+[00:33.84 - 00:38.08] Rolling Stones and you have not had a conversation on stage since so this is
+[00:38.08 - 00:42.54] you know the sequel the you know the bands get together again I'm delighted
+[00:42.54 - 00:47.22] you need no introduction the title of our conversation is the day after AGI
+[00:47.22 - 00:50.84] which I think is perhaps slightly getting ahead of ourselves because we
+[00:50.84 - 00:54.96] should probably talk about how quickly and easily we will get there and I want
+[00:54.96 - 00:56.36] to do a bit of a sort of update on that
+[00:56.36 - 01:00.48] and then talk about the consequences so firstly on the timeline Dario you last
+[01:00.48 - 01:04.66] year in Paris said we'll have a model that can do everything a human could do
+[01:04.66 - 01:11.08] at the level of a Nobel laureate across many fields by 2627 we're in 26 do you
+[01:11.08 - 01:14.50] still stand by that timeline so you know it's always hard to know exactly when
+[01:14.50 - 01:18.36] something will happen but but I don't I don't think that's gonna turn out to be
+[01:18.36 - 01:23.80] that far off so you know the the mechanism whereby a match I imagined it
+[01:23.80 - 01:26.34] would happen is that we would make models that would be more effective and
+[01:28.66 - 01:32.00] more efficient and more efficient and we would use that to produce the next
+[01:32.00 - 01:35.64] generation of model and speed it up to create a loop that would that would
+[01:35.64 - 01:40.86] increase the speed of model development we are now in terms of you know the
+[01:40.86 - 01:45.48] models that write code I have engineers within entropic who say I don't write
+[01:45.48 - 01:50.36] any code anymore I just I just let the model write the code I edit it I do the
+[01:50.36 - 01:55.60] things around it I think I don't know we might be six to twelve months away from
+[01:56.16 - 01:56.28] we might be six to twelve months away from we might be six to twelve months away from
+[01:56.28 - 02:02.14] when the model is doing most maybe all of what swis do and tend and then it's a
+[02:02.14 - 02:02.38] when the model is doing most maybe all of what swis do and tend and then it's a
+[02:02.38 - 02:07.00] question of how fast does that loop close not every part of that loop is
+[02:07.00 - 02:10.26] something that can be sped up by AI right there's like chips there's
+[02:10.26 - 02:14.64] manufacture of chips there's training time for the model so it's you know I
+[02:14.64 - 02:19.50] think there's a lot of uncertainty it's easy to see how this could take a few
+[02:19.50 - 02:22.14] years I don't it's very hard for me to see
+[02:22.14 - 02:26.24] how it could take longer than that but if if I had to guess I would
+[02:26.24 - 02:31.40] guess that this goes faster than people imagine that that key element of code
+[02:31.40 - 02:37.12] and increasingly research going faster than we imagine that's gonna be the key
+[02:37.12 - 02:41.60] driver it's really hard to predict again how much that exponential is gonna speed
+[02:41.60 - 02:46.52] us up but but something fast is gonna happen so you Demis were a little more
+[02:46.52 - 02:50.12] cautious last year you said a 50 % chance of a system that can exhibit all the
+[02:50.12 - 02:55.88] cognitive capabilities humans can by the end of the decade clearly in coding as
+[02:56.24 - 02:59.70] the presidency says it's been remarkable what is your sense of do you
+[02:59.70 - 03:03.50] stand by your prediction and how it's changed in the past year yeah look I I
+[03:03.50 - 03:06.66] think I'm still on the same kind of timeline I think there has been
+[03:06.66 - 03:13.48] remarkable progress but I think some areas of kind of engineering work coding
+[03:13.48 - 03:17.30] or so you could say mathematics are a little bit easier to see how they would
+[03:17.30 - 03:22.12] be automated partly because they're verifiable what the output is some areas
+[03:22.12 - 03:25.70] of Natural Science are much harder to do than that you won't necessarily know if
+[03:26.24 - 03:30.16] compound you've built or this prediction about physics is correct it may be how
+[03:30.16 - 03:34.64] you may have to test it experimentally and that will all take longer so I also
+[03:34.64 - 03:38.56] think there are some missing capabilities at the moment in terms of
+[03:38.56 - 03:43.14] like not just solving existing conjectures or existing problems but
+[03:43.14 - 03:46.40] actually coming up with the question in the first place or coming up with the
+[03:46.40 - 03:50.00] theory or the hypothesis I think that's much much harder and I think that's the
+[03:50.00 - 03:53.94] highest level of scientific creativity and it's not clear I think we will have
+[03:53.94 - 03:57.14] those systems so I don't think it's impossible but I think there may be one
+[03:57.14 - 04:01.12] or two missing ingredients it remains to be seen how you know first of all can
+[04:01.12 - 04:05.10] this self -improvement loop that we're all working on actually close without a
+[04:05.10 - 04:08.12] human in the loop I think there are also risks to that with to that kind of
+[04:08.12 - 04:11.98] system by the way which we should discuss and I'm sure we will but the but
+[04:11.98 - 04:15.68] but that could speed things up if that kind of system does we'll get to the
+[04:15.68 - 04:18.72] risks in a minute but one other change I think of the past year has been a kind
+[04:18.72 - 04:23.52] of change in the pecking order of the race if you will this time a year ago we
+[04:23.52 - 04:23.92] just had a system where we had a
+[04:23.92 - 04:27.04] the deep -seek moment and everyone was incredibly excited about what happened
+[04:27.04 - 04:32.18] there and there was still a sense you know that Google deep mind was kind of
+[04:32.18 - 04:36.18] lagging open AI I would say that now it's looking quite different I mean
+[04:36.18 - 04:40.44] they've declared code red right it's been quite a quite a year so talk me
+[04:40.44 - 04:45.32] through what specifically you've been surprised by and how well you've done
+[04:45.32 - 04:48.68] this year and whether you think and then I'm gonna ask you about the lineup well
+[04:48.68 - 04:53.62] look I think we were I was always very confident we would get back to sort of
+[04:53.62 - 04:57.50] the top of the the leaderboards and and the SOTA type of models across the board
+[04:57.50 - 05:01.72] because I think we've always had like the deepest and broadest research bench
+[05:01.72 - 05:05.72] and it was about kind of marshalling that all together and getting the
+[05:05.72 - 05:08.96] intensity and focus and the kind of startup mentality back to the whole
+[05:08.96 - 05:14.32] organization and it's been a lot of work and but I think we're and we're still a
+[05:14.32 - 05:18.94] lot of work to do but I think you can start seeing the the you know the the
+[05:18.94 - 05:23.52] kind of the progress that's been made in both the models with Gemini 3 but also a
+[05:23.62 - 05:28.48] on the product side with Gemini app getting increasing market share so I
+[05:28.48 - 05:34.00] feel like we're making great progress but there's a ton more work to do and you
+[05:34.00 - 05:37.18] know we're bringing to bear Google deep minds kind of like the engine room of
+[05:37.18 - 05:41.10] Google where we're getting used to shipping our models more more quickly
+[05:41.10 - 05:45.00] into the product surfaces one question for you Daria on on this aspect of it
+[05:45.00 - 05:48.42] because you've just so you're in the process of you know a new round at an
+[05:48.42 - 05:53.60] extraordinary evaluation too but you are unlike them as a let's call it an in the
+[05:53.62 - 05:56.96] dependent model maker and there is I think an increasing concern that the
+[05:56.96 - 06:00.98] independent model makers will not be able to continue for long enough until
+[06:00.98 - 06:05.24] you get to where the revenues come in it's made very openly about open AI but
+[06:05.24 - 06:08.78] talk me through how you think about that and then we'll get to the AGI itself yeah
+[06:08.78 - 06:12.72] I mean that you know I think how we think about that is you
+[06:12.72 - 06:16.62] know as we've built better and better models there's been a kind of
+[06:16.62 - 06:20.66] exponential relationship not only between how much compute you put into
+[06:20.66 - 06:23.46] the model and how cognitively capable it is but
+[06:23.62 - 06:26.98] between how cognitively capable it is and how much revenue it's able to
+[06:26.98 - 06:31.02] generate so our revenues grown 10x in the last three years from zero to a
+[06:31.02 - 06:36.20] hundred million in 2023 hundred million to a billion in 2024 and 1 billion to 10
+[06:36.20 - 06:40.12] billion in 2025 and so the those revenue numbers you know I don't know if that
+[06:40.12 - 06:44.40] curve will literally continue it would be crazy if it did but those numbers are
+[06:44.40 - 06:48.88] starting to get not too far from you know the scale the scale of the largest
+[06:48.88 - 06:52.10] companies in the world so there's always uncertainty you
+[06:52.10 - 06:53.48] know we're trying to bootstrap this from
+[06:53.62 - 06:58.08] nothing it's it's a crazy thing but but I have confidence that if we're able to
+[06:58.08 - 07:03.22] produce the best models in the things that we focus on um uh then I think then
+[07:03.22 - 07:06.72] I think things will go well and you know I I will I will generally say you know I
+[07:06.72 - 07:11.08] think I think it's been a good year for both both Google and Anthropic and I
+[07:11.08 - 07:14.84] think the thing we actually have in common is that they're you know they're
+[07:14.84 - 07:18.40] both kind of companies that are you know or the research part
+[07:18.40 - 07:22.82] of the company that are kind of led by researchers who focus on the models who
+[07:23.62 - 07:27.28] are solving important problems in the world right who have these kind of hard
+[07:27.28 - 07:33.44] scientific problems as a as a North Star and and I think those are the kind of
+[07:33.44 - 07:37.20] companies that are going to succeed going forward and you know I think I
+[07:37.20 - 07:41.40] think we share that between us I'm going to resist the temptation to ask you what
+[07:41.40 - 07:45.66] will happen to the companies that are not led by researchers uh because I know
+[07:45.66 - 07:52.08] you won't answer it but let's then go on to uh the predictions area now and this we are supposed to be
+[07:53.62 - 07:55.08] Let's talk about closing the loop.
+[07:55.48 - 07:58.72] The odds that you will get models that will close the loop
+[07:58.72 - 08:01.64] and be able to, you know, power themselves, if you will,
+[08:01.68 - 08:02.80] because that's really the crux
+[08:02.80 - 08:05.26] for the winner -takes -all threshold approach.
+[08:05.46 - 08:08.46] Do you still believe that we are likely to see that
+[08:08.46 - 08:11.50] or is this going to be much more of a normal technology
+[08:11.50 - 08:14.70] where followers and catch -up can compete?
+[08:15.42 - 08:16.68] Well, look, I definitely don't think
+[08:16.68 - 08:17.86] it's going to be a normal technology.
+[08:18.02 - 08:21.06] So, I mean, there are aspects already that, as Dara mentioned,
+[08:21.06 - 08:23.62] that it's already helping with our coding
+[08:23.62 - 08:25.36] and some aspects of research.
+[08:25.64 - 08:29.10] The full closing of the loop, though, I think is an unknown.
+[08:29.36 - 08:30.86] I mean, I think it's possible to do.
+[08:31.04 - 08:34.72] You may need AGI itself to be able to do that in some domains.
+[08:34.98 - 08:37.18] Again, where these domains, you know,
+[08:37.20 - 08:39.00] where there's more messiness around them,
+[08:39.16 - 08:41.88] it's not so easy to verify your answer very quickly.
+[08:42.46 - 08:44.38] There's kind of MP -hard domains.
+[08:44.82 - 08:46.56] So, as soon as you start getting more,
+[08:46.66 - 08:49.42] and, you know, I also include, by the way, for AGI, physical AI,
+[08:49.62 - 08:50.66] robotics working,
+[08:50.66 - 08:51.66] all of these kind of things,
+[08:51.76 - 08:53.86] and then you've got, you know, hardware in the loop,
+[08:53.98 - 08:58.24] that may limit how fast the self -improvement systems can work.
+[08:58.46 - 09:00.04] But I think in coding and mathematics
+[09:00.04 - 09:02.96] and these kind of areas, I can definitely see that working.
+[09:03.04 - 09:04.64] And then the question is more theoretical one,
+[09:04.68 - 09:07.06] is what is the limit of engineering and maths
+[09:07.06 - 09:10.02] to solve the natural sciences?
+[09:10.80 - 09:14.06] Dara, you, last year, I think it was last year
+[09:14.06 - 09:15.46] that you published Machines of Love and Grace,
+[09:16.00 - 09:20.40] which was a very, I would say, upbeat essay about the potential,
+[09:20.66 - 09:22.88] that you were going to see unfold.
+[09:23.18 - 09:25.88] And you were talking about, you know, a, what was it,
+[09:25.90 - 09:29.34] a genius of data, a country data center.
+[09:29.94 - 09:33.48] I'm told that you are working on an update to this, a new essay.
+[09:33.60 - 09:35.54] So, you know, wait for it, guys.
+[09:35.60 - 09:37.14] It's not out yet, but it is coming out.
+[09:37.28 - 09:40.88] But perhaps you can give us a sort of a sneak preview
+[09:40.88 - 09:44.08] of what a year later your big take is going to be.
+[09:44.26 - 09:46.86] Yes. So, you know, my take has not changed.
+[09:47.10 - 09:50.24] It has always been my view that, you know, AI is going
+[09:50.24 - 09:51.20] to be incredibly powerful.
+[09:51.32 - 09:53.36] I think Demis and I, you know, kind of agree on that.
+[09:53.44 - 09:54.78] It's just a question of exactly when.
+[09:55.92 - 09:57.70] And because it's incredibly powerful,
+[09:57.86 - 10:00.04] it will do all these wonderful things, like the ones I talked
+[10:00.04 - 10:01.36] about in Machines of Love and Grace.
+[10:01.56 - 10:03.68] It, you know, will help us cure cancer.
+[10:03.82 - 10:06.24] It may help us to eradicate tropical diseases.
+[10:06.46 - 10:09.10] It will help us understand, understand the universe.
+[10:09.54 - 10:12.84] But that there are these, you know, immense and grave risks
+[10:12.84 - 10:15.22] that, you know, not that we can't address them.
+[10:15.28 - 10:16.00] I'm not a doomer.
+[10:16.12 - 10:19.30] But that, you know, we need to think about them,
+[10:19.34 - 10:20.22] and we need to address them.
+[10:20.22 - 10:22.42] And I wrote Machines of Love and Grace first.
+[10:22.84 - 10:25.94] I'd love to give some sophisticated reason why I wrote
+[10:25.94 - 10:29.32] that first, but it was just that the positive essay was easier
+[10:29.32 - 10:31.82] and more fun to write than the negative essay.
+[10:32.46 - 10:34.86] So, you know, I finally spent some time on vacation,
+[10:35.08 - 10:37.54] and I was able to write an essay about the risks.
+[10:37.62 - 10:42.30] And even when I'm writing about the risks, I try, you know,
+[10:42.94 - 10:44.66] I'm like an optimistic person, right?
+[10:44.72 - 10:48.54] So even as I'm writing about these risks, I wrote about it
+[10:48.54 - 10:49.96] in a way that was like, how do we
+[10:50.22 - 10:51.08] overcome these risks?
+[10:51.16 - 10:53.16] How do we have a battle plan to fight them?
+[10:53.40 - 10:57.30] And the way I framed it was, you know, there's this scene
+[10:57.30 - 11:01.10] from Carl Sagan's Contact, the movie version of it, where,
+[11:01.20 - 11:03.24] you know, they kind of discover alien life.
+[11:03.38 - 11:05.84] And it's this international panel that's like interviewing,
+[11:06.88 - 11:08.20] you know, people to, you know,
+[11:08.20 - 11:10.38] to be humanities representative to meet the alien.
+[11:12.42 - 11:15.40] And one of the questions they asked one of the candidates is,
+[11:15.50 - 11:16.86] you know, if you could ask the aliens,
+[11:17.06 - 11:19.52] anyone question what it would, what would it be?
+[11:20.22 - 11:24.00] And one of the characters says, I would ask, how did you do it?
+[11:24.02 - 11:28.16] How did you manage to get through this technological adolescence
+[11:28.55 - 11:29.68] without destroying yourselves?
+[11:29.96 - 11:31.04] How did you make it through?
+[11:31.52 - 11:34.14] And ever since I saw it, it was like 20 years ago,
+[11:34.20 - 11:35.00] I think I saw that movie.
+[11:35.04 - 11:36.12] It's kind of stuck with me.
+[11:36.32 - 11:40.16] And that's the frame that I used, which is that, you know,
+[11:40.22 - 11:44.86] we are knocking on the door of these incredible capabilities,
+[11:45.28 - 11:45.44] right?
+[11:45.52 - 11:49.96] The ability to build basically machines out of sand, right?
+[11:49.96 - 11:53.74] I think, I think it was inevitable that the instant we started working with FIRE,
+[11:54.88 - 11:58.50] but, but how we handle it is, is not inevitable.
+[11:58.72 - 12:02.60] And so I think the next few years, we're going to be dealing with,
+[12:02.72 - 12:06.78] you know, how do we keep these systems under control that are highly autonomous
+[12:06.78 - 12:08.58] and smarter than any human?
+[12:08.82 - 12:13.56] How do we make sure that individuals don't misuse them, right?
+[12:13.62 - 12:15.80] I have worries about things like bioterrorism.
+[12:15.86 - 12:19.24] How do we make sure that nation states don't misuse them?
+[12:19.26 - 12:19.94] That's why I've been, you know, I've been, you know,
+[12:19.94 - 12:22.08] I've been so concerned about, you know, the CCP,
+[12:22.32 - 12:24.86] other authoritarian, authoritarian governments.
+[12:25.06 - 12:26.84] What are the economic impacts, right?
+[12:26.90 - 12:29.82] I've talked about labor displacement a lot and, and, you know,
+[12:29.82 - 12:32.20] what, what haven't we thought of, which, which in many cases,
+[12:32.30 - 12:35.12] you know, maybe, maybe the, the hardest thing to deal with at all.
+[12:35.66 - 12:40.70] So, you know, I, I'm thinking through how to address those risks.
+[12:40.80 - 12:42.00] And, you know, for, for each of these,
+[12:42.38 - 12:45.78] it's a mixture of things that we individually need to do as,
+[12:45.80 - 12:49.92] as leaders of the, of, the companies and that we can do working together.
+[12:49.92 - 12:54.48] And then there, there's going to need to be some role for wider societal institutions like the,
+[12:54.52 - 12:57.34] like the government in, addressing all of these.
+[12:57.46 - 13:01.50] But, you know, I, just feel this urgency that, you know, every day, you know,
+[13:01.50 - 13:05.32] there's, there's all kinds of crazy stuff going on in the outside world, outside AI, right?
+[13:05.94 - 13:11.12] But, but, you know, my, view is this is happening so fast and is such a crisis,
+[13:11.66 - 13:16.20] we should be devoting almost all of our effort to thinking about how to get through this.
+[13:16.40 - 13:19.60] So I can't decide whether I'm more surprised that you, A, take a vacation,
+[13:19.60 - 13:22.66] B, when you take a vacation, you think about the risks of AI,
+[13:22.78 - 13:25.06] and C, that your essay is framed in terms of,
+[13:25.10 - 13:29.98] are we going to get through the technological adolescence of this technology without destroying ourselves?
+[13:30.46 - 13:33.80] So I'm, my head is slightly spinning, but you then, and I can't wait to read it,
+[13:33.86 - 13:36.98] but you, mentioned several areas that can guide the rest of our conversation.
+[13:37.24 - 13:38.22] Let's start with jobs.
+[13:38.94 - 13:41.16] Because you actually have been very outspoken about that.
+[13:41.24 - 13:45.72] And I think you said that half of entry -level white -collar jobs could be gone within the next one to five years.
+[13:45.86 - 13:48.92] But I'm going to turn to you, Dermis, because so far,
+[13:49.60 - 13:53.54] we haven't actually seen any discernible impact on the labour market.
+[13:54.08 - 13:59.02] Yes, unemployment has ticked up in the US, but all of the kind of economic studies I've looked at
+[13:59.02 - 14:03.42] and that we've written about suggest that this is over -hiring post -pandemic,
+[14:03.46 - 14:04.80] that it's really not AI -driven.
+[14:04.86 - 14:09.18] If anything, people are hiring to build out AI capability.
+[14:10.14 - 14:14.60] Do you think that this will be, as, you know, economists have always argued,
+[14:14.78 - 14:18.70] that it's not a lump of labour fallacy, that actually there will be new jobs created?
+[14:18.76 - 14:19.42] Because so far,
+[14:19.60 - 14:20.72] the evidence seems to suggest that.
+[14:20.82 - 14:20.88] Yeah.
+[14:21.30 - 14:25.12] I mean, I think in the near term, that is what will happen,
+[14:25.20 - 14:27.98] the kind of normal evolution when a breakthrough technology arrives.
+[14:28.20 - 14:32.26] So some jobs will get disrupted, but I think new, even more valuable,
+[14:32.28 - 14:34.18] perhaps more meaningful jobs will get created.
+[14:34.66 - 14:39.56] I think we're going to see this year the beginnings of maybe impacting the junior -level,
+[14:39.80 - 14:42.84] entry -level kind of jobs, internships, this type of thing.
+[14:42.88 - 14:45.10] I think there is some evidence I can feel that ourselves,
+[14:45.50 - 14:47.80] maybe like a slowdown in hiring in that.
+[14:47.88 - 14:49.36] But I think that can be more than
+[14:49.36 - 14:53.46] compensated by the fact there are these amazing creative tools out there pretty much available
+[14:53.46 - 15:00.58] for everyone, almost for free, that if I was to talk to a class of undergrads right now,
+[15:00.66 - 15:05.08] I would be telling them to get really unbelievably proficient with these tools.
+[15:05.30 - 15:08.86] I think to the extent that even those of us building it, we're so busy building it,
+[15:08.88 - 15:12.94] it's hard to have also time to really explore almost the capability overhang,
+[15:12.98 - 15:16.32] even today's models and products have, let alone tomorrow's.
+[15:16.34 - 15:19.16] And I think that can be maybe better than,
+[15:19.16 - 15:23.56] than a traditional internship would have been in terms of sort of leapfrogging yourself
+[15:23.56 - 15:25.96] to be useful in a profession.
+[15:26.66 - 15:30.64] So I think that's what I see happening probably in the next five years.
+[15:31.44 - 15:33.84] Maybe we, again, slightly differ on timescales on that,
+[15:33.94 - 15:37.52] but I think what happens after AGI arrives, that's a different question.
+[15:37.62 - 15:40.66] So I think really we would be in uncharted territory at that point.
+[15:40.86 - 15:42.88] Do you think it's going to take longer than you thought last year
+[15:42.88 - 15:45.32] when you said half of all entry -level white -collar jobs?
+[15:45.44 - 15:46.28] No, I have about the same view.
+[15:46.38 - 15:49.14] I actually agree with you and with Demis that, at the time,
+[15:49.14 - 15:52.50] I made the comment there was no impact on the labour market.
+[15:52.56 - 15:55.78] I wasn't saying there was an impact on the labour market at that moment.
+[15:56.38 - 15:59.54] You know, now I think maybe we're starting to see just,
+[15:59.58 - 16:02.04] just the little beginnings of it, you know, in software encoding.
+[16:02.34 - 16:06.72] I didn't see it within, within Anthropic where, you know, it, you know,
+[16:06.78 - 16:11.90] I can look forward, I can kind of look forward to a time where on the more junior end
+[16:11.90 - 16:15.42] and then on the more, intermediate end,
+[16:15.48 - 16:17.86] we actually need less and not more people.
+[16:17.90 - 16:18.74] And, you know, we're thinking about
+[16:18.74 - 16:24.26] how to deal with that within Anthropic in a, you know, sense, in a sensible way.
+[16:25.98 - 16:30.36] I, you know, one to five years as of six months ago, I would stick with that.
+[16:30.48 - 16:34.52] You know, if you kind of, you know, connect this to what I said before, which is,
+[16:34.60 - 16:38.96] you know, we, we might have AI that's better than humans at everything in,
+[16:39.00 - 16:42.88] you know, maybe one to two years, maybe a little longer than that.
+[16:43.10 - 16:44.90] Those don't seem to line up.
+[16:45.06 - 16:48.00] The reason is that there's this, there's this lag
+[16:48.74 - 16:50.80] and there's this replacement thing, right?
+[16:50.90 - 16:53.22] I, I know the labor market is adaptable, right?
+[16:53.34 - 16:56.90] It's just like, you know, 80 % of people used to do farming, you know,
+[16:56.90 - 17:00.30] farming got automated and then they became factory workers and then knowledge workers.
+[17:00.54 - 17:05.04] So, you know, there is some level of adaptability here as well, right?
+[17:05.14 - 17:08.30] We should be economically sophisticated about how the labor market works.
+[17:08.44 - 17:12.04] But my worry is as this exponential keeps compounding,
+[17:12.04 - 17:16.28] and I don't think it's going to take that long, again, somewhere between,
+[17:16.36 - 17:18.72] between a year and five years, it will overwhelm, overwhelm.
+[17:18.74 - 17:24.50] our ability to adapt. I think I may be saying the same thing Demis is, just factored out of that
+[17:24.50 - 17:29.36] difference we have about timelines, which I think ultimately comes down to how fast you close the
+[17:29.36 - 17:35.24] loop on coding. How much confidence do you have that governments get the scale of this and are
+[17:36.06 - 17:42.22] beginning to think about what policy responses they need to have? I don't think that it's anywhere
+[17:42.22 - 17:46.38] near enough work going on about this. I'm constantly surprised even when I meet economists
+[17:46.38 - 17:51.18] at places like this that they're not more of professional economists, professors, thinking
+[17:51.18 - 17:58.22] about what happens. And not just sort of on the way to AGI, but even if we get all the technical
+[17:58.22 - 18:02.32] things right that Dario is talking about, and the job displacement is one question, we're all worried
+[18:02.32 - 18:06.70] about the economics of that, but maybe there are ways to distribute this new productivity, this new
+[18:06.70 - 18:10.74] wealth more fairly. I don't know if we have the right institutions to do that, but that's what
+[18:10.74 - 18:15.38] should happen at that point. We may be in a post -scarcity world, but then there are even
+[18:15.38 - 18:16.36] the things that keep me up at night.
+[18:16.38 - 18:22.14] There are even bigger questions than that at that point to do with meaning and purpose.
+[18:22.52 - 18:26.86] And a lot of the things that we get from our jobs, not just economically, that's one question, but
+[18:26.86 - 18:32.92] I think that may be easier to solve strangely than what happens to the human condition and humanity
+[18:32.92 - 18:36.92] as a whole. And I think I'm also optimistic we'll come up with new answers there. We do a lot of
+[18:36.92 - 18:43.40] things today from extreme sports to art that aren't necessarily directly to do with economic
+[18:43.40 - 18:45.54] gain. So I think we will find
+[18:45.54 - 18:50.54] meaning, and maybe there'll be even more sort of sophisticated versions of those activities.
+[18:51.10 - 18:56.82] Plus, I think we'll be exploring the stars. So there'll be all of that to factor in as well in
+[18:56.82 - 19:02.22] terms of purpose. But I think it's really worth thinking now, even on my timelines of like five
+[19:02.22 - 19:05.96] to ten years away, that isn't a lot of time before this comes into being.
+[19:05.96 - 19:11.80] How big do you think is the risk of a popular backlash against AI that will somehow
+[19:12.42 - 19:15.52] kind of cause governments to do what for?
+[19:15.52 - 19:19.84] From your perspective might be stupid things, because I'm just thinking back to the era of
+[19:20.44 - 19:24.92] globalisation in the 1990s, when there was indeed some displacement of jobs,
+[19:25.08 - 19:30.20] governments didn't do enough. The public backlash was such that we've ended up sort of where we are
+[19:30.20 - 19:36.94] now. Do you think that there is a risk that there will be a growing antipathy towards what you are
+[19:36.94 - 19:39.56] doing and your companies in the kind of body politic?
+[19:40.44 - 19:45.42] I think there's definitely a risk. I think that's kind of reasonable. There's fair,
+[19:45.52 - 19:48.42] and there's worries about these things like jobs and livelihoods.
+[19:49.10 - 19:53.32] I think there's a couple of things that I mean, it's gonna be very complicated the next few years,
+[19:53.42 - 19:57.46] I think geopolitically, but also the various factors here like we want to,
+[19:57.46 - 20:01.12] and we're trying to do this with AlphaFold and our science work and Isomorphic,
+[20:01.14 - 20:05.76] our spin out company, solve all disease, cure diseases, come up with new energy sources.
+[20:05.88 - 20:09.96] I think as a society, it's clear we'd want that. I think maybe the balance of what the
+[20:09.96 - 20:14.48] industry is doing is not enough balance towards those types of activities. I think we should have
+[20:15.52 - 20:19.46] a similar set of goals. I know Dario agrees with me of like AlphaFold like things that help sort of
+[20:19.46 - 20:23.66] unequivocal good in the world. And I think actually, it's incumbent on the industry and
+[20:23.66 - 20:27.62] all of us leading players to show that more, demonstrate that, not just talk about it,
+[20:27.66 - 20:32.58] but demonstrate that. And but then it's going to come with these other intended disruptions.
+[20:32.68 - 20:37.48] And but I don't, I think the other issue is the geopolitical competition is obviously competition
+[20:37.48 - 20:42.68] between the companies, but also US and China primarily. So unless there's an international
+[20:42.68 - 20:45.12] cooperation or or understanding around this.
+[20:45.16 - 20:45.50] Well it's very difficult to say for sure. But, you know, I think it's a very, very difficult question,
+[20:45.50 - 20:47.14] which I think would be good, actually,
+[20:47.14 - 20:50.12] in terms of things like minimum safety standards for deployment.
+[20:50.22 - 20:51.52] I think Dario would agree on that as well.
+[20:51.58 - 20:52.68] I think it's vitally needed.
+[20:52.80 - 20:54.46] This technology is going to be cross -border.
+[20:54.60 - 20:55.62] It's going to affect everyone.
+[20:55.72 - 20:56.68] It's going to affect all of humanity.
+[20:57.76 - 21:00.06] Actually, Contact is one of my favourite films as well.
+[21:00.24 - 21:03.22] So, funnily enough, I didn't realise it was yours too, Dario.
+[21:03.38 - 21:07.94] But I think, you know, those kind of things need to be worked through.
+[21:08.42 - 21:11.54] And if we can, maybe it would be good to have a bit of slow...
+[21:11.54 - 21:14.64] ..a slightly slower pace than we're currently predicting,
+[21:14.64 - 21:17.90] even my timelines, so that we can get this right societally.
+[21:18.04 - 21:20.72] But that would require some coordination that is...
+[21:20.72 - 21:22.80] I prefer your timelines. Yes.
+[21:23.06 - 21:24.04] I think it would be better for many reasons.
+[21:24.22 - 21:25.64] That I'll concede. Yes.
+[21:25.70 - 21:27.26] But, Dario, let's turn to this now,
+[21:27.34 - 21:30.32] because one thing, since we last spoke in Paris,
+[21:30.50 - 21:33.90] the geopolitical environment has, if anything, I don't know,
+[21:33.98 - 21:37.40] complicated, mad, crazy, whatever phrase you want to use.
+[21:38.14 - 21:41.92] Secondly, the US has a very different approach now towards China.
+[21:42.06 - 21:42.84] It's a much more...
+[21:42.84 - 21:44.46] It's a kind of no -holds -barred,
+[21:44.64 - 21:46.72] we'll go as fast as we can, but then sell chips to China.
+[21:48.30 - 21:49.78] And that is...
+[21:49.78 - 21:51.90] So, you've got a different attitude towards the United States,
+[21:52.04 - 21:56.66] you've got a very strange relationship between the United States
+[21:56.66 - 21:58.82] and Europe right now, geopolitically.
+[21:59.52 - 22:01.72] Against that, I mean, I hear you talk about it would be nice
+[22:01.72 - 22:03.56] to have a CERN -like organisation.
+[22:03.90 - 22:06.32] I mean, it's a million years from where we are, from the real world.
+[22:06.40 - 22:09.50] So, in the real world, have the geopolitical risks increased?
+[22:09.98 - 22:13.42] And what, if anything, do you think should be done about that?
+[22:13.50 - 22:14.62] And the administration seems to be saying,
+[22:14.62 - 22:16.18] we're doing the opposite of what you were suggesting.
+[22:16.34 - 22:19.68] Yeah, I mean, look, you know, we're just trying to do the best we can to,
+[22:19.72 - 22:22.64] you know, we're just one company and we're trying to operate in,
+[22:22.72 - 22:26.46] you know, the environment that exists, no matter how crazy it is.
+[22:26.64 - 22:31.14] But, you know, I think at least my policy recommendations haven't changed.
+[22:31.42 - 22:37.86] That, you know, not selling chips is one of the biggest things we can do
+[22:39.04 - 22:42.70] to, you know, make sure that we have the time to handle this.
+[22:43.26 - 22:44.60] You know, I said...
+[22:44.62 - 22:47.84] I said before, you know, I prefer Demis's timeline.
+[22:48.08 - 22:50.74] I wish we had five to ten years, you know.
+[22:50.78 - 22:53.00] So, it's possible he's just right and I'm just wrong,
+[22:53.12 - 22:55.96] but assume I'm right and it can be done in one to two years.
+[22:56.12 - 22:58.56] Why can't we slow down to Demis's timeline?
+[22:58.96 - 22:59.84] Well, you could just slow down.
+[23:00.04 - 23:02.24] Well, no, but the reason...
+[23:02.24 - 23:05.90] The reason we can't do that is, you know,
+[23:05.92 - 23:08.98] because we have geopolitical adversaries
+[23:08.98 - 23:12.44] building the same technology at a similar pace.
+[23:12.66 - 23:14.60] It's very hard to have an enforceable...
+[23:14.62 - 23:14.86] It's very hard to have an enforceable agreement
+[23:14.86 - 23:17.10] where they slow down and we slow down.
+[23:17.30 - 23:18.66] And so, if we can just...
+[23:19.24 - 23:21.12] If we can just not sell the chips,
+[23:21.32 - 23:25.62] then this isn't a question of competition between the US and China.
+[23:25.76 - 23:28.26] This is a question of competition between me and Demis,
+[23:28.32 - 23:30.30] which I'm very confident that we can work out.
+[23:30.52 - 23:33.00] And what do you make of the logic of the administration,
+[23:33.36 - 23:35.50] which, as I understand it, is we need to sell them chips
+[23:35.50 - 23:39.02] because we need to bind them into US supply chains?
+[23:40.00 - 23:41.72] So, you know, it's...
+[23:42.34 - 23:43.90] I think it's...
+[23:43.90 - 23:44.60] I think it's a question of...
+[23:44.62 - 23:46.92] I think it's a question not just of timescale,
+[23:46.94 - 23:49.48] but of the significance of the technology, right?
+[23:49.54 - 23:52.12] If this was telecom or something,
+[23:52.30 - 23:55.92] then all this stuff about proliferating the US stack
+[23:55.92 - 23:58.24] and, you know, wanting to build our, you know,
+[23:58.24 - 24:00.54] chips around the world to make sure that, you know,
+[24:01.32 - 24:02.64] you know, this...
+[24:02.64 - 24:06.52] You know, these random countries in different parts of the world,
+[24:06.60 - 24:09.30] you know, build data centers that have NVIDIA chips
+[24:09.30 - 24:10.74] instead of Huawei chips.
+[24:10.94 - 24:13.70] You know, I think of this more as like, you know,
+[24:13.70 - 24:14.32] it's a decision.
+[24:14.62 - 24:19.26] Are we going to, you know, sell nuclear weapons to North Korea
+[24:19.72 - 24:23.08] and, you know, because that produces some profit for Boeing,
+[24:23.66 - 24:25.08] you know, where we can say,
+[24:25.14 - 24:26.90] OK, yeah, these cases were made by Boeing.
+[24:26.98 - 24:28.36] Like, the US is winning.
+[24:28.48 - 24:29.28] Like, this is great.
+[24:29.40 - 24:30.50] Like, I just...
+[24:30.50 - 24:32.80] You know, that analogy should just make clear
+[24:33.52 - 24:35.32] how I see this trade -off,
+[24:35.36 - 24:37.08] that I just don't think it makes sense.
+[24:37.62 - 24:41.24] And we've done a lot of more aggressive stuff,
+[24:41.34 - 24:44.56] you know, towards China, China and other players,
+[24:44.62 - 24:48.06] that I think is much less effective than this one measure.
+[24:48.48 - 24:49.86] One more area for me,
+[24:49.94 - 24:51.46] and then I hope we'll have time for a question or two.
+[24:51.58 - 24:55.68] The other area of potential risk that doomers worry about
+[24:55.68 - 24:58.02] is a kind of all -powerful, malign AI.
+[24:58.48 - 25:02.14] And I think you've both been somewhat sceptical of the doomer approach,
+[25:02.30 - 25:04.74] but in the last year, we have seen, you know,
+[25:05.32 - 25:08.78] these models showing themselves to be capable of deception, duplicity.
+[25:10.18 - 25:11.74] Do you think that...
+[25:11.74 - 25:13.96] Do you think differently about that risk now
+[25:13.96 - 25:14.60] than you did a year ago?
+[25:14.62 - 25:18.84] And is there something about the way the models are evolving
+[25:18.84 - 25:20.52] that we should put a little bit more concern on that?
+[25:20.76 - 25:23.42] Yeah, I mean, you know, since the beginning of Anthropic,
+[25:23.58 - 25:25.48] we've kind of thought about this risk.
+[25:25.60 - 25:28.46] I mean, you know, our research at the beginning of it
+[25:28.46 - 25:30.16] was very theoretical, right?
+[25:30.28 - 25:32.92] You know, we pioneered this idea of mechanistic interpretability,
+[25:33.10 - 25:34.42] which is looking inside the model
+[25:34.42 - 25:36.12] and trying to understand...
+[25:36.12 - 25:37.42] Looking inside its brain,
+[25:37.54 - 25:39.68] trying to understand why it does what it does,
+[25:39.74 - 25:40.44] as it...
+[25:40.44 - 25:42.64] You know, as human neuroscientists,
+[25:42.68 - 25:44.30] which we actually both have background in,
+[25:44.62 - 25:47.74] try to understand the brain.
+[25:48.06 - 25:49.90] And I think as time has gone on,
+[25:49.96 - 25:52.44] we've increasingly documented the, you know,
+[25:52.46 - 25:54.56] bad behaviors of the models when they emerge
+[25:54.56 - 25:57.32] and are now working on trying to address them
+[25:57.32 - 25:58.62] with mechanistic interpretability.
+[25:58.92 - 26:00.98] So, you know, I think, you know,
+[26:01.00 - 26:03.18] I've always been concerned about these risks.
+[26:03.38 - 26:04.84] I've talked to Demis many times.
+[26:04.94 - 26:07.76] I think he has also been concerned about these risks.
+[26:07.90 - 26:10.06] I think I have definitely been,
+[26:10.14 - 26:12.08] and I would guess Demis as well,
+[26:12.16 - 26:13.52] although I'll let him speak for himself,
+[26:14.62 - 26:16.04] but the spectacle of doomerism,
+[26:16.10 - 26:17.52] which is, you know, we're doomed,
+[26:17.68 - 26:18.90] there's nothing we can do,
+[26:19.02 - 26:20.64] or this is the most likely outcome,
+[26:20.88 - 26:22.70] I think this is a risk.
+[26:22.82 - 26:25.50] This is a risk that if we were all work together,
+[26:25.74 - 26:28.64] we can address, we can learn through science
+[26:28.64 - 26:32.00] to properly, you know, control and direct
+[26:32.00 - 26:33.76] these creations that we're building.
+[26:33.96 - 26:35.90] But if we build them poorly,
+[26:36.20 - 26:40.48] if we go, you know, if we're all racing
+[26:40.48 - 26:42.56] and we go so fast that there's no guardrails,
+[26:42.74 - 26:44.54] then I think there is risk of something going wrong.
+[26:44.54 - 26:46.14] So I'm going to give you a chance to answer that
+[26:46.14 - 26:48.16] in the context of a slightly broader question,
+[26:48.34 - 26:49.74] which is, over the past year,
+[26:49.84 - 26:54.32] have you grown more confident of the upside potential
+[26:54.32 - 26:55.74] of the technology, science,
+[26:55.90 - 26:57.74] all of the areas that you have talked about a lot,
+[26:57.88 - 27:00.26] or are you more worried about the risks
+[27:00.26 - 27:01.10] that we've been discussing?
+[27:01.84 - 27:04.50] Look, Azana, I've been working on this for 20 plus years,
+[27:04.56 - 27:05.82] so we already knew,
+[27:06.10 - 27:08.18] look, the reason I've spent my whole career on AI
+[27:08.18 - 27:11.00] is the upsides of solving, basically,
+[27:11.06 - 27:12.40] the ultimate tool for science
+[27:12.78 - 27:14.16] and understanding the universe
+[27:14.16 - 27:14.78] around us.
+[27:14.80 - 27:16.80] I've sort of been obsessed with that since a kid.
+[27:16.96 - 27:19.46] And building AI is the, you know,
+[27:19.46 - 27:20.72] should be the ultimate tool for that
+[27:20.72 - 27:21.58] if we do it in the right way.
+[27:21.80 - 27:23.70] The risks also we've been thinking about
+[27:23.70 - 27:26.44] since at least the start of DeepMind 15 years ago.
+[27:26.78 - 27:28.94] And we kind of sort of foresaw
+[27:28.94 - 27:30.26] that if you got the upsides,
+[27:30.28 - 27:31.28] it's a dual purpose technology,
+[27:31.62 - 27:33.56] so it could be repurposed by, say,
+[27:33.60 - 27:34.92] bad actors for harmful ends.
+[27:35.14 - 27:37.08] So we've needed to think about that all the way through.
+[27:37.26 - 27:39.38] But I'm a big believer in human ingenuity.
+[27:40.00 - 27:43.92] But the question is having the time and the focus
+[27:44.16 - 27:46.84] and all the best minds collaborating on it
+[27:46.84 - 27:48.26] to solve these problems.
+[27:48.48 - 27:49.76] I'm sure if we had that,
+[27:49.82 - 27:51.50] we would solve the technical risk problem.
+[27:51.78 - 27:53.46] It may be we don't have that,
+[27:53.52 - 27:54.96] and then that will introduce risk
+[27:54.96 - 27:56.02] because we'll be sort of,
+[27:56.04 - 27:57.04] it'll be fragmented,
+[27:57.28 - 27:58.28] there'll be different projects
+[27:58.28 - 27:59.60] and people will be racing each other.
+[27:59.70 - 28:01.14] Then it's much harder to make sure,
+[28:01.18 - 28:02.84] you know, these systems that we produce
+[28:02.84 - 28:04.30] will be technically safe.
+[28:04.54 - 28:07.68] But I feel like that's a very tractable problem
+[28:07.68 - 28:08.58] if you have the time.
+[28:08.60 - 28:10.44] If you have time and space.
+[28:10.64 - 28:12.48] I want to make sure there's one question.
+[28:12.64 - 28:13.92] Gentlemen, keep it very short,
+[28:13.92 - 28:15.10] because we've got literally two minutes.
+[28:16.44 - 28:17.66] Thanks for, hello?
+[28:18.10 - 28:19.04] Yeah, no, speak.
+[28:19.42 - 28:20.08] Thanks very much.
+[28:20.10 - 28:20.90] I'm Philip Co -Founder
+[28:20.90 - 28:22.64] of StarCloud Building Data Centers in Space.
+[28:23.24 - 28:26.14] I wanted to ask a slightly philosophical core question.
+[28:26.36 - 28:29.02] The sort of strongest argument for doomerism to me
+[28:29.02 - 28:29.82] is the Fermi Paradox,
+[28:29.92 - 28:31.90] the idea that we don't see intelligent life in our galaxy.
+[28:32.18 - 28:33.72] I was wondering if you guys have any thoughts on that.
+[28:33.72 - 28:34.54] Yeah, I've thought a lot about that.
+[28:34.62 - 28:35.62] That can't be the reason,
+[28:35.66 - 28:38.82] because we should see all the AIs that have,
+[28:38.94 - 28:40.14] so just for everyone to know,
+[28:40.14 - 28:42.82] the idea is, well, it's sort of unclear
+[28:42.82 - 28:43.64] why that would happen.
+[28:43.92 - 28:46.10] Right, so if the reason there's a Fermi Paradox,
+[28:46.18 - 28:46.94] there are no aliens,
+[28:47.10 - 28:49.14] because they get taken out by their own technology,
+[28:49.46 - 28:52.10] we should be seeing paperclips coming towards us
+[28:52.10 - 28:53.54] from some part of the galaxy,
+[28:53.84 - 28:54.94] and apparently we don't.
+[28:54.94 - 28:56.10] We don't see any structures.
+[28:56.40 - 28:57.40] Dyson sphere is nothing,
+[28:57.54 - 29:00.02] whether they're AI or sort of biological.
+[29:00.36 - 29:02.80] So to me, there has to be a different answer
+[29:02.80 - 29:03.32] to the Fermi Paradox.
+[29:03.42 - 29:04.48] I have my own theories about that,
+[29:04.52 - 29:05.88] but it's out of scope for the next minute.
+[29:06.16 - 29:08.64] But, you know, I just feel like,
+[29:10.32 - 29:13.38] my feeling is that we're past the great filter.
+[29:13.38 - 29:15.28] It was probably multicellular life,
+[29:15.40 - 29:16.20] if I would have to guess.
+[29:16.34 - 29:19.42] It was incredibly hard for biology to evolve that.
+[29:20.28 - 29:21.60] So we're on that, you know,
+[29:21.60 - 29:23.60] there isn't a comfort of like, what's gonna happen next.
+[29:23.72 - 29:25.64] I think it's for us to write as humanity,
+[29:25.84 - 29:26.76] what's gonna happen next.
+[29:26.86 - 29:28.06] This could be a great discussion,
+[29:28.20 - 29:29.82] but it is out of scope for the next 36 seconds.
+[29:29.94 - 29:31.66] But what isn't, 15 seconds each.
+[29:31.80 - 29:34.02] What, when we meet again, I hope next year,
+[29:34.44 - 29:35.86] the three of us, which I would love,
+[29:36.22 - 29:37.58] what will have changed by then?
+[29:38.42 - 29:43.06] I, well, I think the biggest thing to watch is this issue
+[29:43.06 - 29:45.96] of AI systems, building AI systems.
+[29:46.22 - 29:49.40] How that goes, whether that goes one way or another,
+[29:50.14 - 29:52.86] that will determine, you know,
+[29:52.90 - 29:55.54] whether it's a few more years until we get there,
+[29:55.62 - 29:57.46] or if we have, you know,
+[29:58.58 - 30:02.92] if we have wonders and a great emergency in front of us
+[30:02.92 - 30:03.78] that we have to face.
+[30:04.10 - 30:05.48] AI systems, building AI systems.
+[30:05.48 - 30:06.24] I agree on that.
+[30:06.34 - 30:08.14] So we're keeping close touch about that.
+[30:08.24 - 30:10.90] But also I think outside of that,
+[30:10.96 - 30:12.00] I think there are other interesting,
+[30:13.06 - 30:14.06] other ideas being researched,
+[30:14.14 - 30:15.86] like world models, continual learning.
+[30:16.14 - 30:17.84] These are the things I think that will need to be cracked
+[30:17.84 - 30:20.68] if self -improvement doesn't sort of deliver the goods
+[30:20.68 - 30:21.28] on its own.
+[30:21.38 - 30:23.26] Then we'll need these other things to work.
+[30:23.42 - 30:24.96] And then I think things like robotics
+[30:24.96 - 30:26.60] may have its sort of breakout moment.
+[30:26.76 - 30:28.88] But maybe on the basis of what you've just said,
+[30:28.94 - 30:30.48] we should all be hoping that it does take you
+[30:30.48 - 30:32.30] a little bit longer, and indeed everybody else,
+[30:32.34 - 30:32.76] to give us a little more time.
+[30:32.76 - 30:33.44] I would prefer that.
+[30:33.54 - 30:34.66] I think that would be better for the world.
+[30:34.88 - 30:36.72] Well, you guys could do something about that.
+[30:36.84 - 30:38.54] Thank you both very much indeed.
+[30:44.80 - 30:45.68] Thank you.

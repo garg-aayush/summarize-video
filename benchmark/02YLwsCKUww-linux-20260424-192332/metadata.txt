@@ -1,0 +1,30 @@
+=== Run ===
+timestamp:   20260424-192332
+url:         https://www.youtube.com/watch?v=02YLwsCKUww
+video_id:    02YLwsCKUww
+platform:    linux
+hostname:    aayush-MS-7D25
+uname:       Linux aayush-MS-7D25 6.8.0-107-generic #107-Ubuntu SMP PREEMPT_DYNAMIC Fri Mar 13 19:51:50 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+extra_args:  -l en --cookies-from-browser chrome --num-speakers 3 --llama-server-bin /home/aayush/llama.cpp/build/bin/llama-server -f
+
+=== Hardware ===
+NVIDIA GeForce RTX 4090, 570.124.06, 24564 MiB
+cpu: 12th Gen Intel(R) Core(TM) i7-12700KF
+ram: 31.2 GB
+
+=== Python / Torch ===
+python: 3.11.14
+torch: 2.11.0+cu128
+cuda: True NVIDIA GeForce RTX 4090
+
+=== Timing ===
+total_wall_s: 261.71
+exit_status:  0
+
+=== Per-step (from orchestrator log) ===
+=== 1/6 download ===   (2.7s)
+=== 2/6 transcribe  backend=faster model=turbo lang=en ===   (110.5s)
+=== 3/6 dedupe ===   (0.1s)
+=== 4/6 diarize ===   (39.2s)
+=== 5/6 merge ===   (0.0s)
+=== 6/6 summarize ===   (96.0s)

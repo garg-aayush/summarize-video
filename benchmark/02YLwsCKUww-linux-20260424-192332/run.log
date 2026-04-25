@@ -1,0 +1,85 @@
+Extracting cookies from chrome
+Resolving https://www.youtube.com/watch?v=02YLwsCKUww
+Work dir: /tmp/summarize-video-02YLwsCKUww
+  description: 2496 chars -> 02YLwsCKUww.description.txt
+
+=== 1/6 download ===
+Extracted 44 cookies from chrome
+[youtube] Extracting URL: https://www.youtube.com/watch?v=02YLwsCKUww
+[youtube] 02YLwsCKUww: Downloading webpage
+[youtube] 02YLwsCKUww: Downloading web embedded client config
+[youtube] 02YLwsCKUww: Downloading player 8456c9de-main
+[youtube] 02YLwsCKUww: Downloading web embedded player API JSON
+[youtube] 02YLwsCKUww: Downloading android vr player API JSON
+WARNING: [youtube] 02YLwsCKUww: n challenge solving failed: Some formats may be missing. Ensure you have a supported JavaScript runtime and challenge solver script distribution installed. Review any warnings presented before this message. For more details, refer to  https://github.com/yt-dlp/yt-dlp/wiki/EJS
+[info] 02YLwsCKUww: Downloading 1 format(s): 140
+[download] /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.m4a has already been downloaded
+[download] 100% of   28.86MiB
+[ExtractAudio] Not converting audio /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.m4a; file is already in target format m4a
+/home/aayush/repos/summarize-video/.venv/lib/python3.11/site-packages/pyannote/audio/utils/reproducibility.py:74: ReproducibilityWarning: TensorFloat-32 (TF32) has been disabled as it might lead to reproducibility issues and lower accuracy.
+It can be re-enabled by calling
+   >>> import torch
+   >>> torch.backends.cuda.matmul.allow_tf32 = True
+   >>> torch.backends.cudnn.allow_tf32 = True
+See https://github.com/pyannote/pyannote-audio/issues/1370 for more details.
+
+  warnings.warn(
+/home/aayush/repos/summarize-video/.venv/lib/python3.11/site-packages/pyannote/audio/models/blocks/pooling.py:103: UserWarning: std(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at /pytorch/aten/src/ATen/native/ReduceOps.cpp:1858.)
+  std = sequences.std(dim=-1, correction=1)
+  -> /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.m4a
+  (2.7s)
+
+=== 2/6 transcribe  backend=faster model=turbo lang=en ===
+  detected language: en
+  segments: 609
+  (110.5s)
+
+=== 3/6 dedupe ===
+  words: 6306 -> 6263 (collapsed 43)
+  (0.1s)
+
+=== 4/6 diarize ===
+  speakers: 3 (SPEAKER_00, SPEAKER_01, SPEAKER_02)
+  (39.2s)
+
+=== 5/6 merge ===
+  utterances: 45
+  (0.0s)
+
+=== 6/6 summarize ===
+  freed +1988 MiB, 23380/24058 MiB now free
+  spawning llama-server (model load takes 30-90s)...
+Spawning llama-server: /home/aayush/llama.cpp/build/bin/llama-server -m /home/aayush/MODELS/unsloth/gemma-4-31B-it-GGUF/gemma-4-31B-it-UD-Q4_K_XL.gguf -ngl 99 -c 65536 --flash-attn on --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --batch-size 2048 --ubatch-size 512 --context-shift --metrics --jinja --host 127.0.0.1 --port 8081
+  PID 624498, log: /tmp/summarize-video-llama-server.log
+  Waiting for model to load (this can take 30-90s)...
+Server ready at http://127.0.0.1:8081.
+  extracting episode context from description...
+  -> 02YLwsCKUww.episode_context.md (355 chars)
+  -> /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.diarized.summary.md
+  stopping llama-server...
+  (96.0s)
+
+============================================================
+Summary
+============================================================
+Source:        https://www.youtube.com/watch?v=02YLwsCKUww
+Work dir:      /tmp/summarize-video-02YLwsCKUww
+Audio:         /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.m4a
+Transcript:    /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.json
+Diarization:   /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.diarization.json
+Description:   /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.description.txt
+Episode ctx:   /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.episode_context.md
+Summary:       /tmp/summarize-video-02YLwsCKUww/02YLwsCKUww.diarized.summary.md
+Steps run:     download, transcribe, dedupe, diarize, merge, episode_context, summarize
+Cached:        —
+Language:      en
+Segments:      609
+Words:         6263 (dedupe collapsed 43)
+Speakers:      3 (SPEAKER_00, SPEAKER_01, SPEAKER_02)
+Utterances:    45
+
+Final outputs (copied to benchmark/02YLwsCKUww-linux-20260424-192332):
+  benchmark/02YLwsCKUww-linux-20260424-192332/02YLwsCKUww.txt
+  benchmark/02YLwsCKUww-linux-20260424-192332/02YLwsCKUww.timed.txt
+  benchmark/02YLwsCKUww-linux-20260424-192332/02YLwsCKUww.diarized.txt
+  benchmark/02YLwsCKUww-linux-20260424-192332/02YLwsCKUww.diarized.summary.md
