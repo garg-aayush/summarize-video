@@ -100,9 +100,43 @@ The `LD_LIBRARY_PATH=` prefix is only needed if the system has an older cuDNN in
 
 ### macOS (Apple Silicon)
 
-_TBD — need to re-run the pipeline on a Mac and capture the exact steps before writing this up._
+I tested and tuned this pipeline on my M3 Max (36 GB unified memory). The transcript-only flow (`--no-summarize`) will run on any Apple Silicon Mac; the summarize step needs enough unified memory to hold Gemma 4 31B (~24 GB for the Q4_K_XL quant).
+
+Prereqs: [Homebrew](https://brew.sh), [`uv`](https://docs.astral.sh/uv/) installed.
+
+```bash
+# 1. System deps
+brew install ffmpeg
+
+# 2. Clone + install
+git clone <repo-url> summarize-video && cd summarize-video
+uv sync                      # pulls mlx-whisper + Metal backend (~1 GB)
+
+# 3. HF token for pyannote (one-time)
+#    Create a read token at https://huggingface.co/settings/tokens, then
+#    accept the gates on each of these pages while signed in:
+#      https://huggingface.co/pyannote/speaker-diarization-3.1
+#      https://huggingface.co/pyannote/segmentation-3.0
+#      https://huggingface.co/pyannote/speaker-diarization-community-1
+export HF_TOKEN=hf_xxx...
+
+# 4. Install llama.cpp (Metal already enabled in the Homebrew build)
+brew install llama.cpp
+
+# 5. Download the Gemma model
+uv tool install huggingface_hub
+mkdir -p ~/MODELS/unsloth/gemma-4-31B-it-GGUF
+hf download unsloth/gemma-4-31B-it-GGUF gemma-4-31B-it-UD-Q4_K_XL.gguf --local-dir ~/MODELS/unsloth/gemma-4-31B-it-GGUF
+
+# 6. Transcribe + diarize + summarize a video
+uv run python summarize_video.py "https://www.youtube.com/watch?v=HeAGWTgi4sU" -l en
+```
+
+`llama-server` is on `$PATH` after `brew install llama.cpp`, so no `--llama-server-bin` flag is needed. No `LD_LIBRARY_PATH=` prefix is needed on Mac.
 
 ### Example commands
+
+The examples below are from my Linux box. On Mac: drop `LD_LIBRARY_PATH=` and `--llama-server-bin` (Homebrew puts `llama-server` on `$PATH`).
 
 **English panel** (~31 min, 3 speakers):
 
@@ -152,7 +186,7 @@ LD_LIBRARY_PATH= uv run python summarize_video.py \
 | en (turbo, 3 speakers) | 31m 11s | 110.5s | 39.2s | 96.0s | **4m 22s** | 7.1× |
 | hi (v3, 2 speakers)    | 8m 14s  | 87.8s  | 24.6s | 66.6s | **3m 15s** | 2.5× |
 
-Mac (Apple Silicon) numbers TBD — need to re-run on a Mac.
+Mac (Apple Silicon) numbers TBD.
 
 Transcribe is usually the biggest step, summarize is close behind, diarize scales with audio length. Per-step wall times can swing 10–25% run-to-run on this box (GPU thermal state, background load) — treat as a single-run snapshot, not a tight average.
 
